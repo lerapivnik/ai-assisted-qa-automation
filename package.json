@@ -1,0 +1,25 @@
+{
+  "name": "ai-assisted-qa-automation",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:report": "playwright show-report"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lerapivnik/ai-assisted-qa-automation.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/lerapivnik/ai-assisted-qa-automation/issues"
+  },
+  "homepage": "https://github.com/lerapivnik/ai-assisted-qa-automation#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}
