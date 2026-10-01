@@ -1,3 +1,0 @@
-[   62256ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://test.didaxis.studio/api/auth/refresh:0
-[ 3721083ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://test.didaxis.studio/api/auth/refresh:0
-[ 5020786ms] [ERROR] WebSocket connection to 'wss://test.didaxis.studio/socket.io/?EIO=4&transport=websocket' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED @ https://test.didaxis.studio/assets/index--ha_Sndr.js:115
