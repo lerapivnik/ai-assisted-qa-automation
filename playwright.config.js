@@ -1,6 +1,10 @@
 // @ts-check
+const path = require('path');
 const { defineConfig, devices } = require('@playwright/test');
 
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+
+/** @type {import('@playwright/test').PlaywrightTestConfig} */
 module.exports = defineConfig({
   testDir: './tests',
   fullyParallel: true,
@@ -10,6 +14,7 @@ module.exports = defineConfig({
   reporter: 'html',
   use: {
     trace: 'on-first-retry',
+    baseURL: process.env.DIDAXIS_URL,
   },
   projects: [
     {

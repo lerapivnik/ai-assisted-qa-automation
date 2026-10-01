@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
-const TODO_APP_URL = 'https://demo.playwright.dev/todomvc/#/';
+const TODO_APP_URL =
+  process.env.TODO_APP_URL || 'https://demo.playwright.dev/todomvc/#/';
 
 async function openEmptyTodoApp(page) {
   await page.goto(TODO_APP_URL);
