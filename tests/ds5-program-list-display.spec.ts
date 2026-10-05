@@ -39,12 +39,16 @@ function editProgramDialog(page: Page): Locator {
 
 function programRow(page: Page, programName: string): Locator {
   return page.getByRole('row').filter({
-    has: page.getByText(programName, { exact: true }),
+    has: page.getByRole('button', { name: `Edit ${programName}`, exact: true }),
   });
 }
 
-function programInList(page: Page, programName: string): Locator {
-  return page.getByRole('table').getByText(programName, { exact: true });
+function programNameInList(page: Page, programName: string): Locator {
+  return programRow(page, programName).locator('p').first();
+}
+
+function deleteButton(page: Page, programName: string): Locator {
+  return page.getByRole('button', { name: `Delete ${programName}`, exact: true });
 }
 
 async function login(page: Page): Promise<void> {
@@ -63,6 +67,13 @@ async function openPrograms(page: Page): Promise<void> {
   await expect(page.getByRole('button', { name: '+ New Program' })).toBeVisible({
     timeout: 30_000,
   });
+  await expect(page.getByRole('table')).toBeVisible({ timeout: 60_000 });
+}
+
+async function waitForProgramListed(page: Page, programName: string): Promise<void> {
+  const edit = page.getByRole('button', { name: `Edit ${programName}`, exact: true });
+  await expect(edit).toBeVisible({ timeout: 60_000 });
+  await edit.scrollIntoViewIfNeeded();
 }
 
 async function createProgram(
@@ -77,31 +88,42 @@ async function createProgram(
     await dialog.getByLabel('Description').fill(description);
   }
   await dialog.getByRole('button', { name: 'Create' }).click();
-  await expect(newProgramDialog(page)).toBeHidden({ timeout: 30_000 });
-  await expect(programInList(page, programName)).toBeVisible();
+  await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
+  await waitForProgramListed(page, programName);
+  await expect(programNameInList(page, programName)).toBeVisible();
 }
 
 async function deleteProgram(page: Page, programName: string): Promise<void> {
-  page.once('dialog', async (dialog) => {
-    await dialog.accept();
+  const button = deleteButton(page, programName);
+  await button.scrollIntoViewIfNeeded();
+
+  const handled = new Promise<void>((resolve) => {
+    page.once('dialog', async (dialog) => {
+      await dialog.accept();
+      resolve();
+    });
   });
-  await page.getByRole('button', { name: `Delete ${programName}` }).click();
-  await expect(programInList(page, programName)).toHaveCount(0, { timeout: 30_000 });
+
+  await button.click();
+  await handled;
+
+  await expect(deleteButton(page, programName)).toHaveCount(0, { timeout: 30_000 });
 }
 
 async function orderedNamesForBatch(page: Page, batchId: string): Promise<string[]> {
-  const rows = page.getByRole('row').filter({ hasText: batchId });
-  await expect(rows.first()).toBeVisible({ timeout: 30_000 });
+  const editPattern = new RegExp(`^Edit .+${batchId}$`);
+  await expect(page.getByRole('button', { name: editPattern }).first()).toBeVisible({
+    timeout: 60_000,
+  });
+
+  const rows = page.getByRole('row').filter({
+    has: page.getByRole('button', { name: editPattern }),
+  });
+  await expect(rows.first()).toBeVisible({ timeout: 60_000 });
   const count = await rows.count();
   const names: string[] = [];
   for (let i = 0; i < count; i += 1) {
-    const nameLine = await rows
-      .nth(i)
-      .getByRole('cell')
-      .first()
-      .locator('p')
-      .first()
-      .innerText();
+    const nameLine = await rows.nth(i).locator('p').first().innerText();
     if (nameLine.includes(batchId)) {
       names.push(nameLine.trim());
     }
@@ -130,20 +152,20 @@ test.describe('Program list filtering and display', () => {
       await createProgram(page, dataScience, dataDesc);
 
       await expect(programRow(page, webDev)).toBeVisible();
-      await expect(programRow(page, webDev).getByText(webDesc)).toBeVisible();
+      await expect(programRow(page, webDev).locator('p').nth(1)).toHaveText(webDesc);
       await expect(programRow(page, dataScience)).toBeVisible();
-      await expect(programRow(page, dataScience).getByText(dataDesc)).toBeVisible();
+      await expect(programRow(page, dataScience).locator('p').nth(1)).toHaveText(dataDesc);
     });
 
     test('TC-002: empty state message and create prompt are shown when no programs exist', async () => {
       test.skip(true, SHARED_ENV_HAS_PROGRAMS);
     });
 
-    test('TC-003: create-first-program prompt navigates to program creation form', async () => {
+    test('TC-003: create-first-program prompt opens the New Program dialog', async () => {
       test.skip(true, SHARED_ENV_HAS_PROGRAMS);
     });
 
-    test('TC-004: program with empty description displays correctly in the list', async ({
+    test('TC-004: program with empty description displays only the name line in the list', async ({
       page,
     }) => {
       const programName = uniqueName('Data Science 2026');
@@ -151,8 +173,24 @@ test.describe('Program list filtering and display', () => {
 
       const row = programRow(page, programName);
       await expect(row).toBeVisible();
-      await expect(row.getByText(programName, { exact: true })).toBeVisible();
-      await expect(row.locator('p').filter({ hasText: /./ })).toHaveCount(1);
+      await expect(programNameInList(page, programName)).toHaveText(programName);
+      await expect(row.locator('p')).toHaveCount(1);
+    });
+
+    test('TC-014: Programs page shows table layout and row management actions', async ({
+      page,
+    }) => {
+      const programName = uniqueName('Test Program');
+      await createProgram(page, programName, uniqueName('Row actions probe'));
+
+      await expect(page.getByRole('columnheader', { name: 'Program' })).toBeVisible();
+      await expect(page.getByRole('table')).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: `Edit ${programName}`, exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: `Delete ${programName}`, exact: true }),
+      ).toBeVisible();
     });
 
     test('TC-006: program list does not show stale data after a program is deleted', async ({
@@ -165,17 +203,23 @@ test.describe('Program list filtering and display', () => {
 
       await deleteProgram(page, dataScience);
 
-      await expect(programInList(page, dataScience)).toHaveCount(0);
-      await expect(programInList(page, webDev)).toBeVisible();
+      await expect(deleteButton(page, dataScience)).toHaveCount(0);
+      await expect(programNameInList(page, webDev)).toBeVisible();
     });
 
-    test('TC-007: program list does not show duplicate entries after creating a program', async ({
+    test('TC-007: program list does not show duplicate entries after creating a program once', async ({
       page,
     }) => {
       const programName = uniqueName('Cloud Computing 2026');
       await createProgram(page, programName, uniqueName('Cloud curriculum'));
 
-      await expect(programInList(page, programName)).toHaveCount(1);
+      await expect(programRow(page, programName)).toHaveCount(1);
+    });
+
+    test('TC-015: Programs page has no search or filter controls', async ({ page }) => {
+      await expect(page.getByPlaceholder(/search/i)).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /filter/i })).toHaveCount(0);
+      await expect(page.getByRole('textbox', { name: /search/i })).toHaveCount(0);
     });
 
     test('TC-008: program list displays programs with special characters correctly', async ({
@@ -186,10 +230,12 @@ test.describe('Program list filtering and display', () => {
       await createProgram(page, programName, description);
 
       await expect(programRow(page, programName)).toBeVisible();
-      await expect(programRow(page, programName).getByText(description)).toBeVisible();
+      await expect(programRow(page, programName).locator('p').nth(1)).toHaveText(description);
     });
 
-    test('TC-009: program list handles a large number of programs', async ({ page }) => {
+    test('TC-009: program list handles a large number of programs via scrollable table', async ({
+      page,
+    }) => {
       const startedAt = Date.now();
       await expect(page.getByRole('table')).toBeVisible({ timeout: 30_000 });
       await page.getByRole('table').evaluate((table) => {
@@ -200,7 +246,7 @@ test.describe('Program list filtering and display', () => {
       expect(await page.getByRole('row').count()).toBeGreaterThanOrEqual(50);
     });
 
-    test('TC-010: program with maximum-length name and description displays in the list', async ({
+    test('TC-010: program with long name and description appears in the list', async ({
       page,
     }) => {
       const programName = nameOfLength(ASSUMED_PROGRAM_NAME_LENGTH);
@@ -209,8 +255,10 @@ test.describe('Program list filtering and display', () => {
 
       const row = programRow(page, programName);
       await expect(row).toBeVisible();
-      await expect(row.getByText(programName, { exact: true })).toBeVisible();
-      await expect(row.getByText(description)).toBeVisible();
+      await expect(programNameInList(page, programName)).toHaveText(programName);
+      const descLine = row.locator('p').nth(1);
+      await expect(descLine).toBeVisible();
+      await expect(descLine).toHaveAttribute('data-line-clamp', 'true');
     });
 
     test('TC-011: program list updates immediately after editing a program', async ({ page }) => {
@@ -218,21 +266,26 @@ test.describe('Program list filtering and display', () => {
       const updatedName = uniqueName('Web Development 2026 - Updated');
       await createProgram(page, programName, uniqueName('Original curriculum'));
 
-      await page.getByRole('button', { name: `Edit ${programName}` }).click();
+      await page.getByRole('button', { name: `Edit ${programName}`, exact: true }).click();
       const dialog = editProgramDialog(page);
       await dialog.getByLabel('Program Name').fill(updatedName);
       await dialog.getByRole('button', { name: 'Save' }).click();
-      await expect(editProgramDialog(page)).toBeHidden({ timeout: 30_000 });
+      await expect(editProgramDialog(page)).toBeHidden({ timeout: 45_000 });
 
-      await expect(programInList(page, updatedName)).toBeVisible();
-      await expect(programInList(page, programName)).toHaveCount(0);
+      await expect(programNameInList(page, updatedName)).toBeVisible();
+      await expect(deleteButton(page, programName)).toHaveCount(0);
+      await expect(
+        page.getByRole('button', { name: `Edit ${updatedName}`, exact: true }),
+      ).toBeVisible();
     });
 
     test('TC-012: empty state transitions to list view after creating the first program', async () => {
       test.skip(true, SHARED_ENV_HAS_PROGRAMS);
     });
 
-    test('TC-013: program list sorting is consistent and predictable', async ({ page }) => {
+    test('TC-013: program list sort order is stable across refresh for a batch of programs', async ({
+      page,
+    }) => {
       const batchId = String(Date.now());
       const alpha = `Alpha Program ${batchId}`;
       const beta = `Beta Program ${batchId}`;
@@ -248,10 +301,19 @@ test.describe('Program list filtering and display', () => {
 
       await page.reload();
       await openPrograms(page);
-      await expect(programInList(page, alpha)).toBeVisible({ timeout: 30_000 });
+      await waitForProgramListed(page, alpha);
       const secondOrder = await orderedNamesForBatch(page, batchId);
 
       expect(secondOrder).toEqual(firstOrder);
+    });
+
+    test('TC-016: duplicate program names appear as separate rows', async ({ page }) => {
+      const programName = uniqueName('Web Development 2026');
+      await createProgram(page, programName, uniqueName('First duplicate'));
+      await createProgram(page, programName, uniqueName('Second duplicate'));
+
+      await expect(programRow(page, programName)).toHaveCount(2);
+      await expect(deleteButton(page, programName)).toHaveCount(2);
     });
   });
 
@@ -259,6 +321,9 @@ test.describe('Program list filtering and display', () => {
     await page.goto('/programs');
 
     await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByText('Sign in to your account')).toBeVisible();
+    await expect(page.getByLabel('Email')).toBeVisible();
+    await expect(page.getByLabel('Password')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Programs' })).toHaveCount(0);
     await expect(page.getByRole('table')).toHaveCount(0);

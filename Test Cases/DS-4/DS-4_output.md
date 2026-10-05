@@ -7,19 +7,19 @@
 
 **Preconditions:**
 - User is logged in as admin
-- Program "Test Program" exists on the Programs page
+- A program based on "Test Program" exists on the Programs page
 
 **Steps:**
 1. Navigate to the Programs page
-2. Click the delete icon for "Test Program"
-3. Observe the confirmation dialog
-4. Click Confirm (or equivalent affirmative action)
+2. Click the delete action `Delete {program name}`
+3. Observe the native browser confirmation dialog
+4. Click OK / Confirm on the dialog
 5. Observe the program list
 
 **Expected result:**
 ```gherkin
 Given a program "Test Program" exists
-When I click the delete icon for "Test Program"
+When I click the delete action for "Test Program"
 Then I see a confirmation dialog
 When I confirm deletion
 Then "Test Program" is removed from the program list
@@ -38,18 +38,17 @@ Then "Test Program" is removed from the program list
 
 **Steps:**
 1. Navigate to the Programs page
-2. Click the delete icon for a program
+2. Click the delete action for a program
 3. Observe the confirmation dialog
-4. Click Cancel
+4. Click Cancel on the native confirm dialog (dismiss)
 5. Observe the program list
 
 **Expected result:**
 ```gherkin
-Given I click the delete icon for a program
+Given I click the delete action for a program
 When I see the confirmation dialog
 And I click Cancel
 Then the program still exists in the list
-And the confirmation dialog closes
 ```
 
 **Priority:** High
@@ -57,22 +56,24 @@ And the confirmation dialog closes
 ---
 
 ### TC-003
-**Title:** Confirmation dialog displays the program name being deleted
+**Title:** Confirmation dialog displays the program name and cascade warning
 
 **Preconditions:**
 - User is logged in as admin
 - Program "Test Program" exists
 
 **Steps:**
-1. Click the delete icon for "Test Program"
+1. Click the delete action for "Test Program"
 2. Read the confirmation dialog message
 
 **Expected result:**
 ```gherkin
 Given a program "Test Program" exists
-When I click the delete icon for "Test Program"
-Then I see a confirmation dialog
-And the dialog mentions "Test Program" by name
+When I click the delete action for "Test Program"
+Then I see a native confirm dialog
+And the message includes the program name
+And the message warns that semesters and courses will be removed
+And the message states the action cannot be undone
 ```
 
 **Priority:** Medium
@@ -82,20 +83,20 @@ And the dialog mentions "Test Program" by name
 ## Negative Flows
 
 ### TC-004
-**Title:** Program is not deleted when confirmation dialog is dismissed without action
+**Title:** Program is not deleted when confirmation dialog is dismissed
 
 **Preconditions:**
 - User is logged in as admin
 - Program "Test Program" exists
 
 **Steps:**
-1. Click the delete icon for "Test Program"
-2. Press Escape or click outside the dialog (if supported)
+1. Click the delete action for "Test Program"
+2. Dismiss the native confirm dialog (Cancel)
 3. Observe the program list
 
 **Expected result:**
 ```gherkin
-Given I click the delete icon for "Test Program"
+Given I click the delete action for "Test Program"
 When I dismiss the confirmation dialog without confirming
 Then "Test Program" still exists in the program list
 ```
@@ -109,18 +110,18 @@ Then "Test Program" still exists in the program list
 
 **Preconditions:**
 - User is not logged in
-- Program "Test Program" exists
 
 **Steps:**
-1. Navigate directly to the Programs page URL
-2. Attempt to delete a program
+1. Navigate directly to /programs
+2. Observe the page
 
 **Expected result:**
 ```gherkin
 Given I am not logged in
 When I navigate to the Programs page
-Then I am redirected to the login page
-And I cannot delete any program
+Then I am redirected to /login
+And I see "Sign in to your account"
+And I do not see any Delete actions
 ```
 
 **Priority:** High
@@ -128,23 +129,24 @@ And I cannot delete any program
 ---
 
 ### TC-006
-**Title:** Deleting a non-existent program shows an appropriate error
+**Title:** Deleting an already-deleted program removes stale row after confirm
 
 **Preconditions:**
-- User is logged in as admin
-- Program "Test Program" was deleted by another user
+- User is logged in as admin in two sessions
+- The same program exists in both sessions
 
 **Steps:**
-1. User A's browser still shows "Test Program" in the list (stale view)
-2. User A clicks delete and confirms
-3. Observe the response
+1. Session B deletes the program and confirms
+2. Session A still shows the program (stale list)
+3. Session A clicks delete and confirms
+4. Observe Session A's list after reload
 
 **Expected result:**
 ```gherkin
-Given "Test Program" no longer exists on the server
-When I attempt to confirm deletion of "Test Program"
-Then I see an error indicating the program was not found
-And the program list refreshes to reflect the current state
+Given the program no longer exists on the server
+When I confirm deletion from a stale list view
+Then the program does not reappear
+And the list no longer shows that program after refresh
 ```
 
 **Priority:** Medium
@@ -152,23 +154,23 @@ And the program list refreshes to reflect the current state
 ---
 
 ### TC-007
-**Title:** Double-clicking confirm does not cause duplicate delete requests
+**Title:** Confirming deletion once removes the program without duplicate DELETE errors
 
 **Preconditions:**
 - User is logged in as admin
 - Program "Test Program" exists
 
 **Steps:**
-1. Click the delete icon for "Test Program"
-2. Rapidly double-click the Confirm button
-3. Observe the program list and any error messages
+1. Click the delete action for "Test Program"
+2. Accept the confirmation dialog once
+3. Observe the program list and network DELETE calls
 
 **Expected result:**
 ```gherkin
 Given I see the confirmation dialog for "Test Program"
-When I double-click Confirm
-Then "Test Program" is removed exactly once
-And no server error occurs
+When I confirm once
+Then "Test Program" is removed exactly once from the list
+And at most one DELETE request is sent
 ```
 
 **Priority:** Medium
@@ -185,16 +187,15 @@ And no server error occurs
 - Program "Informatique & IA - Niveau 2" exists
 
 **Steps:**
-1. Click the delete icon for "Informatique & IA - Niveau 2"
+1. Click the delete action for that program
 2. Confirm deletion
 3. Observe the program list
 
 **Expected result:**
 ```gherkin
-Given a program "Informatique & IA - Niveau 2" exists
-When I click the delete icon for "Informatique & IA - Niveau 2"
-And I confirm deletion
-Then "Informatique & IA - Niveau 2" is removed from the program list
+Given a program with special characters in the name exists
+When I confirm deletion
+Then that program is removed from the program list
 ```
 
 **Priority:** Medium
@@ -202,23 +203,22 @@ Then "Informatique & IA - Niveau 2" is removed from the program list
 ---
 
 ### TC-009
-**Title:** Deleting the only program in the system shows empty state
+**Title:** Deleted program no longer appears in the program list
 
 **Preconditions:**
 - User is logged in as admin
-- Only one program "Test Program" exists
+- Program exists
 
 **Steps:**
-1. Click the delete icon for "Test Program"
-2. Confirm deletion
-3. Observe the Programs page
+1. Delete the program and confirm
+2. Observe the list
 
 **Expected result:**
 ```gherkin
-Given only "Test Program" exists
-When I confirm deletion of "Test Program"
-Then the program list is empty
-And I see a message indicating no programs have been created
+Given a program exists
+When I confirm its deletion
+Then it no longer appears in the program list
+And the Delete action for that name is gone
 ```
 
 **Priority:** Medium
@@ -226,21 +226,21 @@ And I see a message indicating no programs have been created
 ---
 
 ### TC-010
-**Title:** Deleting a program with a very long name displays correctly in confirmation dialog
+**Title:** Deleting a program with a very long name shows the name in confirmation
 
 **Preconditions:**
 - User is logged in as admin
 - Program with a 255-character name exists
 
 **Steps:**
-1. Click the delete icon for the long-named program
-2. Observe the confirmation dialog layout
+1. Click the delete action for the long-named program
+2. Dismiss the confirmation and read the message
 
 **Expected result:**
 ```gherkin
 Given a program with a 255-character name exists
-When I click the delete icon for that program
-Then the confirmation dialog displays the program name without layout breakage
+When I click the delete action for that program
+Then the native confirm message includes the full program name
 And I can confirm or cancel the deletion
 ```
 
@@ -249,25 +249,21 @@ And I can confirm or cancel the deletion
 ---
 
 ### TC-011
-**Title:** Keyboard navigation works in the confirmation dialog
+**Title:** Dismissing the confirmation dialog keeps the program (no modal Cancel button)
 
 **Preconditions:**
 - User is logged in as admin
-- Program "Test Program" exists
+- Program exists
 
 **Steps:**
-1. Click the delete icon for "Test Program"
-2. Use Tab to navigate between Confirm and Cancel
-3. Press Enter on Cancel
-4. Observe the result
+1. Click the delete action
+2. Dismiss the native confirm without accepting
 
 **Expected result:**
 ```gherkin
-Given I see the confirmation dialog for "Test Program"
-When I press Tab to focus Cancel
-And I press Enter
-Then the dialog closes
-And "Test Program" still exists in the list
+Given I see the native delete confirmation
+When I dismiss it
+Then the program remains in the list
 ```
 
 **Priority:** Low
@@ -275,38 +271,62 @@ And "Test Program" still exists in the list
 ---
 
 ### TC-012
-**Title:** Concurrent deletion by two users is handled gracefully
+**Title:** Concurrent deletion by two users leaves the program removed
 
 **Preconditions:**
-- Two admin users are logged in
-- Program "Test Program" exists
+- Two admin sessions
+- Same program visible in both
 
 **Steps:**
-1. Both users click delete for "Test Program"
-2. User A confirms deletion
-3. User B confirms deletion
-4. Observe User B's experience
+1. Both users trigger delete
+2. Both confirm
+3. Observe both lists
 
 **Expected result:**
 ```gherkin
-Given two users attempt to delete "Test Program"
-When User A confirms first
-And User B confirms second
-Then User B sees an error indicating the program no longer exists
-And the program list reflects the deletion
+Given two users delete the same program
+When both confirm
+Then the program is absent from both users' lists after refresh
+And no user-visible error is required if the second DELETE is idempotent
 ```
 
 **Priority:** Low
 
 ---
 
+### TC-013
+**Title:** Rapid double-click on delete can open multiple confirmation dialogs
+
+**Preconditions:**
+- User is logged in as admin
+- Program exists
+
+**Steps:**
+1. Double-click the delete action quickly
+2. Dismiss each confirmation dialog that appears
+
+**Expected result:**
+```gherkin
+Given a program exists
+When I double-click the delete action
+Then more than one native confirmation dialog may appear
+And dismissing all dialogs leaves the program in the list until one is accepted
+```
+
+**Priority:** Medium
+
+---
+
 ## Ambiguities and Gaps in Acceptance Criteria
 
-1. **Confirmation dialog content:** ACs require a dialog but do not specify the exact message, button labels (Delete/Confirm/Cancel), or whether the program name is shown.
-2. **Dismiss behavior:** No AC covers closing the dialog via Escape or clicking outside. TC-004 addresses this gap.
-3. **Cascade effects:** ACs do not define what happens to related data (enrollments, courses) when a program is deleted.
-4. **Undo/recovery:** No AC mentions whether deletion is reversible or if a soft-delete/archive option exists.
-5. **User roles:** ACs do not specify which roles can delete programs (assumed admin).
-6. **Empty state transition:** Deleting the last program should trigger the empty state (DS-5), but this cross-feature behavior is not referenced in DS-4 ACs.
-7. **Success feedback:** No AC specifies toast/notification after successful deletion.
-8. **Already-deleted program:** No AC covers stale UI or concurrent deletion scenarios. TC-006 and TC-012 address this.
+1. **Native confirm vs in-app modal:** AC says "confirmation dialog"; the app uses the browser `window.confirm()` with OK/Cancel, not a Mantine modal (related: DS-172).
+2. **Cancel wording:** AC says "click Cancel"; on the native dialog this is **Dismiss/Cancel**, handled via `dialog.dismiss()` in Playwright.
+3. **Delete control:** Row action accessible name is `Delete {Program Name}` (icon button, often empty visible text).
+4. **Message text:** `Delete program "{name}"? All its semesters and courses will be removed. This cannot be undone.`
+5. **Cascade:** Message mentions semesters and courses; ACs do not define backend cascade behavior beyond this warning.
+6. **Success feedback:** No toast after delete; removal from the list is the only confirmation.
+7. **Empty state:** Deleting the only program should show empty state (DS-5), but the shared test environment always has thousands of programs — empty-state delete is not practically testable there.
+8. **Stale / concurrent delete:** Second confirm on an already-deleted program typically leaves the list clean after reload; no guaranteed user-visible error (related: DS-116).
+9. **Double-click delete:** Can queue multiple confirm dialogs (related: DS-109, DS-156, DS-30).
+10. **Locators:** Use `Delete {name}` with `exact: true`; assert removal via delete button count or row filter, not broad table `getByText` (avoids actions-column false positives).
+11. **Large list:** Scroll delete control into view before clicking on crowded Programs pages (related: DS-107).

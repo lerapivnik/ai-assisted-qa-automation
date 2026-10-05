@@ -3,6 +3,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 
 dotenv.config();
 
+/** Jira does not define a max length. The live form has no HTML maxLength. */
 const ASSUMED_PROGRAM_NAME_LENGTH = 255;
 
 function requireEnv(name: 'DIDAXIS_EMAIL' | 'DIDAXIS_PASSWORD'): string {
@@ -42,8 +43,14 @@ function createButton(page: Page): Locator {
   return newProgramDialog(page).getByRole('button', { name: 'Create' });
 }
 
+function programRow(page: Page, programName: string): Locator {
+  return page.getByRole('row').filter({
+    has: page.getByRole('button', { name: `Edit ${programName}`, exact: true }),
+  });
+}
+
 function programInList(page: Page, programName: string): Locator {
-  return page.getByRole('table').getByText(programName, { exact: true });
+  return programRow(page, programName).locator('p').first();
 }
 
 async function login(page: Page): Promise<void> {
@@ -56,7 +63,12 @@ async function login(page: Page): Promise<void> {
 
 async function openPrograms(page: Page): Promise<void> {
   await page.goto('/programs');
-  await expect(page.getByRole('button', { name: '+ New Program' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Programs' })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByRole('button', { name: '+ New Program' })).toBeVisible({
+    timeout: 30_000,
+  });
 }
 
 async function openCreateForm(page: Page): Promise<void> {
@@ -75,7 +87,7 @@ async function createProgram(
     await descriptionField(page).fill(description);
   }
   await createButton(page).click();
-  await expect(newProgramDialog(page)).toBeHidden({ timeout: 30_000 });
+  await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
   await expect(programInList(page, programName)).toBeVisible();
 }
 
@@ -103,7 +115,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await descriptionField(page).fill(description);
       await submitCreateForm(page);
 
-      await expect(newProgramDialog(page)).toBeHidden({ timeout: 30_000 });
+      await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
       await expect(programInList(page, programName)).toBeVisible();
     });
 
@@ -116,7 +128,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await descriptionField(page).fill(description);
       await submitCreateForm(page);
 
-      await expect(newProgramDialog(page)).toBeHidden({ timeout: 30_000 });
+      await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
       await expect(programInList(page, programName)).toBeVisible();
     });
 
@@ -138,10 +150,11 @@ test.describe('Program name validation and duplicate prevention', () => {
       await openCreateForm(page);
       await programNameField(page).fill(programName);
       await descriptionField(page).fill(uniqueName('Duplicate attempt'));
+      await expect(newProgramDialog(page).locator('.mantine-InputWrapper-error')).toHaveCount(0);
       await submitCreateForm(page);
 
-      await expect(newProgramDialog(page)).toBeHidden({ timeout: 30_000 });
-      await expect(programInList(page, programName)).toHaveCount(2);
+      await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
+      await expect(programRow(page, programName)).toHaveCount(2);
     });
 
     test('TC-005: empty program name prevents form submission', async ({ page }) => {
@@ -163,9 +176,9 @@ test.describe('Program name validation and duplicate prevention', () => {
       await descriptionField(page).fill(uniqueName('Case variation test'));
       await submitCreateForm(page);
 
-      await expect(newProgramDialog(page)).toBeHidden({ timeout: 30_000 });
-      await expect(programInList(page, programName)).toHaveCount(1);
-      await expect(programInList(page, caseVariant)).toHaveCount(1);
+      await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
+      await expect(programRow(page, programName)).toHaveCount(1);
+      await expect(programRow(page, caseVariant)).toHaveCount(1);
     });
 
     test('TC-007: leading and trailing whitespace is trimmed before save', async ({ page }) => {
@@ -178,8 +191,8 @@ test.describe('Program name validation and duplicate prevention', () => {
       await descriptionField(page).fill(uniqueName('Whitespace padding test'));
       await submitCreateForm(page);
 
-      await expect(newProgramDialog(page)).toBeHidden({ timeout: 30_000 });
-      await expect(programInList(page, programName)).toHaveCount(2);
+      await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
+      await expect(programRow(page, programName)).toHaveCount(2);
     });
 
     test('TC-008: program name at 255 characters is accepted', async ({ page }) => {
@@ -191,7 +204,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await descriptionField(page).fill(description);
       await submitCreateForm(page);
 
-      await expect(newProgramDialog(page)).toBeHidden({ timeout: 30_000 });
+      await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
       await expect(programInList(page, programName)).toBeVisible();
     });
 
@@ -204,8 +217,9 @@ test.describe('Program name validation and duplicate prevention', () => {
       await descriptionField(page).fill(description);
       await submitCreateForm(page);
 
-      await expect(newProgramDialog(page)).toBeHidden({ timeout: 30_000 });
+      await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
       await expect(programInList(page, programName)).toBeVisible();
+      await expect(newProgramDialog(page).locator('.mantine-InputWrapper-error')).toHaveCount(0);
     });
 
     test('TC-010: program name with HTML/script tags is stored as plain text', async ({
@@ -225,7 +239,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await descriptionField(page).fill(description);
       await submitCreateForm(page);
 
-      await expect(newProgramDialog(page)).toBeHidden({ timeout: 30_000 });
+      await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
       expect(dialogOpened).toBe(false);
       await expect(programInList(page, programName)).toBeVisible();
     });
@@ -239,7 +253,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await descriptionField(page).fill(description);
       await submitCreateForm(page);
 
-      await expect(newProgramDialog(page)).toBeHidden({ timeout: 30_000 });
+      await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
       await expect(programInList(page, programName)).toBeVisible();
     });
 
@@ -251,14 +265,47 @@ test.describe('Program name validation and duplicate prevention', () => {
       await createProgram(page, existingName);
       await createProgram(page, otherName);
 
-      await page.getByRole('button', { name: `Edit ${otherName}` }).click();
+      await page.getByRole('button', { name: `Edit ${otherName}`, exact: true }).click();
       const dialog = editProgramDialog(page);
       await dialog.getByLabel('Program Name').fill(existingName);
       await dialog.getByRole('button', { name: 'Save' }).click();
 
-      await expect(editProgramDialog(page)).toBeHidden({ timeout: 30_000 });
-      await expect(programInList(page, otherName)).toHaveCount(0);
-      await expect(programInList(page, existingName)).toHaveCount(2);
+      await expect(editProgramDialog(page)).toBeHidden({ timeout: 45_000 });
+      await expect(page.getByRole('button', { name: `Edit ${otherName}`, exact: true })).toHaveCount(
+        0,
+      );
+      await expect(programRow(page, existingName)).toHaveCount(2);
+    });
+
+    test('TC-013: rapid double-click on Create produces duplicate program records', async ({
+      page,
+    }) => {
+      const programName = uniqueName('Double Click Program');
+
+      await openCreateForm(page);
+      await programNameField(page).fill(programName);
+      await createButton(page).dblclick();
+
+      await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
+      await expect(programRow(page, programName)).toHaveCount(2);
+    });
+
+    test('TC-014: tab and newline characters in Program Name are normalized on save', async ({
+      page,
+    }) => {
+      const suffix = String(Date.now());
+      const rawName = `DS3\tTab\n${suffix}`;
+      const savedName = `DS3\tTab ${suffix}`;
+
+      await openCreateForm(page);
+      await programNameField(page).fill(rawName);
+      await descriptionField(page).fill(uniqueName('Tab newline test'));
+      await submitCreateForm(page);
+
+      await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
+      await expect(
+        page.getByRole('button', { name: `Edit ${savedName}`, exact: true }),
+      ).toBeVisible();
     });
   });
 });

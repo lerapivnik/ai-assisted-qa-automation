@@ -7,21 +7,21 @@
 
 **Preconditions:**
 - User is logged in as admin
-- Programs exist in the system:
-  - "Web Development 2026" — "Full-stack web development program"
-  - "Data Science 2026" — "Machine learning and analytics program"
+- Programs exist with names and descriptions
 
 **Steps:**
 1. Navigate to the Programs page
-2. Observe the program list
+2. Create or locate programs with known names and descriptions
+3. Observe the table list
 
 **Expected result:**
 ```gherkin
 Given programs exist in the system
 When I navigate to the Programs page
-Then I see a list showing each program's name and description
-And I see "Web Development 2026" with description "Full-stack web development program"
-And I see "Data Science 2026" with description "Machine learning and analytics program"
+Then I see a table with column header "Program"
+And each program row shows the program name in bold
+And each program row shows the description in a secondary line when provided
+And I see "+ New Program"
 ```
 
 **Priority:** High
@@ -49,52 +49,78 @@ And I see a prompt to create the first program
 
 **Priority:** High
 
+**Note:** Not runnable on the shared `test.didaxis.studio` environment (always contains existing programs).
+
 ---
 
 ### TC-003
-**Title:** Create-first-program prompt navigates to program creation form
+**Title:** Create-first-program prompt opens the New Program dialog
 
 **Preconditions:**
 - User is logged in as admin
-- No programs exist in the system
+- No programs exist
 
 **Steps:**
 1. Navigate to the Programs page
-2. Click the "create the first program" prompt (or equivalent CTA)
-3. Observe the resulting form
+2. Click the empty-state CTA to create the first program
+3. Observe the dialog
 
 **Expected result:**
 ```gherkin
 Given no programs exist
+When I click the prompt to create the first program
+Then I see the "New Program" dialog with Program Name and Description
+```
+
+**Priority:** Medium
+
+**Note:** Skipped on shared environment (see TC-002).
+
+---
+
+### TC-004
+**Title:** Program with empty description displays only the name line in the list
+
+**Preconditions:**
+- User is logged in as admin
+- A program exists with Description left empty at create
+
+**Steps:**
+1. Navigate to the Programs page
+2. Locate the program row
+
+**Expected result:**
+```gherkin
+Given a program exists with no description
 When I navigate to the Programs page
-And I click the prompt to create the first program
-Then I see the program creation form with fields: Program Name, Description
+Then I see the program name in the list
+And the row shows a single text line (no description subtitle)
 ```
 
 **Priority:** Medium
 
 ---
 
-### TC-004
-**Title:** Program with empty description displays correctly in the list
+### TC-014
+**Title:** Programs page shows table layout and row management actions
 
 **Preconditions:**
 - User is logged in as admin
-- Program "Data Science 2026" exists with an empty Description
+- At least one program exists
 
 **Steps:**
 1. Navigate to the Programs page
-2. Locate "Data Science 2026" in the list
+2. Inspect the list and a program row
 
 **Expected result:**
 ```gherkin
-Given a program "Data Science 2026" exists with no description
 When I navigate to the Programs page
-Then I see "Data Science 2026" in the list
-And the description area is empty or shows a placeholder such as "No description"
+Then I see heading "Programs"
+And I see a table with a "Program" column
+And each row has Edit {Program Name} and Delete {Program Name} actions
 ```
 
-**Priority:** Medium
+**Priority:** High
 
 ---
 
@@ -107,15 +133,15 @@ And the description area is empty or shows a placeholder such as "No description
 - User is not logged in
 
 **Steps:**
-1. Navigate directly to the Programs page URL
-2. Observe the response
+1. Navigate directly to /programs
 
 **Expected result:**
 ```gherkin
 Given I am not logged in
 When I navigate to the Programs page
-Then I am redirected to the login page
-And I do not see the program list
+Then I am redirected to /login
+And I see "Sign in to your account"
+And I do not see the Programs table
 ```
 
 **Priority:** High
@@ -127,19 +153,19 @@ And I do not see the program list
 
 **Preconditions:**
 - User is logged in as admin
-- Programs "Web Development 2026" and "Data Science 2026" exist
+- Two distinct programs exist
 
 **Steps:**
 1. Navigate to the Programs page
-2. Delete "Data Science 2026"
-3. Observe the list without refreshing the page
+2. Delete one program and confirm
+3. Observe the list without manual refresh
 
 **Expected result:**
 ```gherkin
 Given I am on the Programs page
-When I delete "Data Science 2026"
-Then "Data Science 2026" is no longer visible in the list
-And "Web Development 2026" remains visible
+When I delete a program
+Then that program is no longer visible in the list
+And other programs remain visible
 ```
 
 **Priority:** High
@@ -147,24 +173,44 @@ And "Web Development 2026" remains visible
 ---
 
 ### TC-007
-**Title:** Program list does not show duplicate entries after creating a program
+**Title:** Program list does not show duplicate entries after creating a program once
 
 **Preconditions:**
 - User is logged in as admin
-- Program creation form is open
 
 **Steps:**
-1. Create a new program "Cloud Computing 2026"
-2. Observe the program list
+1. Create a new program with a unique name
+2. Observe the list
 
 **Expected result:**
 ```gherkin
-Given I am on the Programs page
-When I create a program named "Cloud Computing 2026"
-Then "Cloud Computing 2026" appears exactly once in the list
+When I create a program with a unique name
+Then that name appears exactly once in the list for that create action
 ```
 
 **Priority:** Medium
+
+---
+
+### TC-015
+**Title:** Programs page has no search or filter controls
+
+**Preconditions:**
+- User is logged in as admin
+- Programs page is loaded
+
+**Steps:**
+1. Observe toolbar and table chrome
+
+**Expected result:**
+```gherkin
+When I navigate to the Programs page
+Then I do not see search or filter controls for the program list
+```
+
+**Priority:** Low
+
+**Note:** Feature title mentions "filtering" but ACs and live UI do not expose list filtering (related: DS-221).
 
 ---
 
@@ -175,18 +221,17 @@ Then "Cloud Computing 2026" appears exactly once in the list
 
 **Preconditions:**
 - User is logged in as admin
-- Program "Informatique & IA - Niveau 2" with description "Programme avancé d'informatique" exists
+- Program with special characters in name and description exists
 
 **Steps:**
 1. Navigate to the Programs page
-2. Locate the program in the list
+2. Locate the program row
 
 **Expected result:**
 ```gherkin
 Given a program "Informatique & IA - Niveau 2" exists
 When I navigate to the Programs page
-Then I see "Informatique & IA - Niveau 2" displayed correctly
-And I see "Programme avancé d'informatique" as the description
+Then the name and description render correctly in the row
 ```
 
 **Priority:** Medium
@@ -194,24 +239,24 @@ And I see "Programme avancé d'informatique" as the description
 ---
 
 ### TC-009
-**Title:** Program list handles a large number of programs
+**Title:** Program list handles a large number of programs via scrollable table
 
 **Preconditions:**
 - User is logged in as admin
-- 50 or more programs exist in the system
+- Many programs exist (shared env has thousands)
 
 **Steps:**
 1. Navigate to the Programs page
-2. Scroll through the list
-3. Observe performance and layout
+2. Scroll the table
+3. Observe load time and layout
 
 **Expected result:**
 ```gherkin
-Given 50 programs exist in the system
+Given many programs exist
 When I navigate to the Programs page
-Then all programs are accessible via scrolling or pagination
-And the page loads within an acceptable time
-And no layout breakage occurs
+Then the table is visible with a "Program" column
+And rows are accessible by scrolling the table
+And the page remains usable without pagination controls
 ```
 
 **Priority:** Medium
@@ -219,23 +264,22 @@ And no layout breakage occurs
 ---
 
 ### TC-010
-**Title:** Program with maximum-length name and description displays without truncation issues
+**Title:** Program with long name and description appears in the list
 
 **Preconditions:**
 - User is logged in as admin
-- Program with a 255-character name and 500-character description exists
+- Program with a 255-character name and long description exists
 
 **Steps:**
 1. Navigate to the Programs page
-2. Locate the program in the list
-3. Observe name and description display
+2. Locate the program row
 
 **Expected result:**
 ```gherkin
-Given a program with a 255-character name exists
+Given a program with a very long name exists
 When I navigate to the Programs page
-Then the program name is displayed without breaking the layout
-And the full name is accessible (via tooltip or expand)
+Then the full program name is shown in the name line
+And the description appears in the dimmed subtitle (may be line-clamped)
 ```
 
 **Priority:** Low
@@ -247,20 +291,17 @@ And the full name is accessible (via tooltip or expand)
 
 **Preconditions:**
 - User is logged in as admin
-- Program "Web Development 2026" exists
+- Program exists
 
 **Steps:**
-1. Navigate to the Programs page
-2. Edit "Web Development 2026" and change the name to "Web Development 2026 - Updated"
-3. Save and observe the list
+1. Edit the program name and save
+2. Observe the list without refresh
 
 **Expected result:**
 ```gherkin
-Given I am on the Programs page
-When I edit "Web Development 2026" to "Web Development 2026 - Updated"
-And I save the changes
-Then the list immediately shows "Web Development 2026 - Updated"
-And "Web Development 2026" is no longer shown
+When I rename a program and save
+Then the list immediately shows the updated name
+And Edit/Delete actions use the updated name
 ```
 
 **Priority:** High
@@ -275,53 +316,77 @@ And "Web Development 2026" is no longer shown
 - No programs exist
 
 **Steps:**
-1. Navigate to the Programs page and confirm empty state
-2. Create program "First Program" with description "The very first program"
+1. Confirm empty state
+2. Create the first program
 3. Observe the page
 
 **Expected result:**
 ```gherkin
 Given no programs exist
-When I create a program named "First Program"
-Then the empty state message disappears
-And the list shows "First Program" with its description
+When I create the first program
+Then the empty state is replaced by the program table row
 ```
 
 **Priority:** High
 
+**Note:** Skipped on shared environment (see TC-002).
+
 ---
 
 ### TC-013
-**Title:** Program list sorting is consistent and predictable
+**Title:** Program list sort order is stable across refresh for a batch of programs
 
 **Preconditions:**
 - User is logged in as admin
-- Multiple programs exist: "Alpha Program", "Beta Program", "Gamma Program"
+- Multiple programs created in one session share a unique batch token in the name
 
 **Steps:**
-1. Navigate to the Programs page
-2. Observe the order of programs in the list
-3. Refresh the page and observe again
+1. Note row order for the batch
+2. Reload the page
+3. Compare order
 
 **Expected result:**
 ```gherkin
-Given multiple programs exist
-When I navigate to the Programs page
-Then programs are displayed in a consistent order (e.g., alphabetical by name or by creation date)
-And the order does not change unexpectedly on refresh
+Given multiple programs from the same batch exist
+When I reload the Programs page
+Then their relative order is unchanged
 ```
 
 **Priority:** Low
 
 ---
 
+### TC-016
+**Title:** Duplicate program names appear as separate rows
+
+**Preconditions:**
+- User is logged in as admin
+- Two programs with the same name exist (allowed by create flow)
+
+**Steps:**
+1. Create two programs with identical names
+2. Observe the list
+
+**Expected result:**
+```gherkin
+Given duplicate names are allowed
+When two programs share the same name
+Then two separate rows appear with separate Edit/Delete actions
+```
+
+**Priority:** Medium
+
+---
+
 ## Ambiguities and Gaps in Acceptance Criteria
 
-1. **Filtering:** The feature title mentions "filtering" but ACs only cover display. No AC defines search, filter, or sort behavior. TC-013 probes sort order as a gap.
-2. **Empty description display:** ACs require name and description columns but do not define how empty descriptions appear. TC-004 addresses this.
-3. **Empty state CTA behavior:** AC mentions a prompt to create the first program but does not specify if it is a button, link, or navigates to the creation form. TC-003 covers this.
-4. **Pagination:** No AC defines behavior for large lists. TC-009 assumes scrolling or pagination at 50+ programs.
-5. **List actions:** ACs do not mention edit/delete icons or other row-level actions visible in the list.
-6. **Real-time updates:** ACs do not specify whether the list auto-updates after create/edit/delete or requires a refresh. TC-006, TC-011, and TC-012 assume immediate updates.
-7. **User roles:** ACs do not specify which roles can view the list.
-8. **Truncation/tooltips:** No AC defines how long names and descriptions are displayed in the list view. TC-010 addresses this.
+1. **Filtering:** Title mentions filtering; live page has **no** search/filter UI (DS-221). ACs cover display only.
+2. **Table structure:** Programs render in a **table** with column **Program** and an actions column (Edit/Delete icon buttons with accessible names).
+3. **Name/description layout:** First cell uses two `<p>` elements when description exists — bold name, dimmed description with `line-clamp`; empty description shows only the name line.
+4. **Empty state:** AC requires empty message + create-first prompt; not testable on shared env with thousands of programs.
+5. **Pagination:** Large lists use a **scrollable table** with all rows in DOM (6000+), not paginated (DS-222).
+6. **Real-time updates:** List updates without refresh after create, edit, and delete.
+7. **Duplicate names:** Multiple rows can share a name; distinguish by separate `Edit {name}` buttons (DS-75).
+8. **Locators:** Prefer row scope via `Edit {Program Name}` with `exact: true`; avoid `getByText` on the table (matches actions column — DS-87, DS-98).
+9. **Delete confirmation:** Native `window.confirm()` before removal (DS-4 / DS-172).
+10. **API errors:** HTTP 500/malformed API may show empty or broken UI instead of error message (DS-35, DS-112, DS-114) — out of DS-5 happy-path scope.
