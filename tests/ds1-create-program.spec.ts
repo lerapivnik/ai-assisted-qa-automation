@@ -1,5 +1,12 @@
 import dotenv from 'dotenv';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import {
+  expect,
+  extractProgramId,
+  isProgramCreateResponse,
+  test,
+  type Locator,
+  type Page,
+} from '../fixtures/cleanup.fixture';
 
 dotenv.config();
 
@@ -87,6 +94,46 @@ async function openCreateForm(page: Page): Promise<void> {
   await expect(descriptionField(page)).toBeVisible();
 }
 
+async function clickCreateAndTrack(
+  page: Page,
+  trackProgram: (uuid: string) => void,
+): Promise<void> {
+  const createResponse = page.waitForResponse(isProgramCreateResponse);
+  await createButton(page).click();
+  const response = await createResponse;
+  if (response.ok()) {
+    trackProgram(extractProgramId(await response.json()));
+  }
+}
+
+async function dblClickCreateAndTrack(
+  page: Page,
+  trackProgram: (uuid: string) => void,
+): Promise<void> {
+  const seenIds = new Set<string>();
+  const onCreateResponse = async (
+    response: Awaited<ReturnType<Page['waitForResponse']>>,
+  ) => {
+    if (!isProgramCreateResponse(response) || !response.ok()) {
+      return;
+    }
+    const id = extractProgramId(await response.json());
+    if (seenIds.has(id)) {
+      return;
+    }
+    seenIds.add(id);
+    trackProgram(id);
+  };
+
+  page.on('response', onCreateResponse);
+  await createButton(page).dblclick();
+  await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
+  await expect
+    .poll(() => seenIds.size, { timeout: 10_000 })
+    .toBeGreaterThanOrEqual(2);
+  page.off('response', onCreateResponse);
+}
+
 test.describe('Create new academic program', () => {
   test.describe.configure({ timeout: 120_000 });
 
@@ -121,27 +168,33 @@ test.describe('Create new academic program', () => {
       await expect(createButton(page)).toBeDisabled();
     });
 
-    test('TC-002: new program is created and appears in the program list', async ({ page }) => {
+    test('TC-002: new program is created and appears in the program list', async ({
+      page,
+      trackProgram,
+    }) => {
       const programName = uniqueName('Web Development 2026');
       const description = 'Full-stack web development program';
 
       await openCreateForm(page);
       await programNameField(page).fill(programName);
       await descriptionField(page).fill(description);
-      await createButton(page).click();
+      await clickCreateAndTrack(page, trackProgram);
 
       await expectProgramCreated(page, programName);
       await expect(programRow(page, programName).locator('p').nth(1)).toHaveText(description);
       await expect(page.getByRole('alert')).toHaveCount(0);
     });
 
-    test('TC-003: program is created with only Program Name filled', async ({ page }) => {
+    test('TC-003: program is created with only Program Name filled', async ({
+      page,
+      trackProgram,
+    }) => {
       const programName = uniqueName('Data Science 2026');
 
       await openCreateForm(page);
       await programNameField(page).fill(programName);
       await expect(descriptionField(page)).toHaveValue('');
-      await createButton(page).click();
+      await clickCreateAndTrack(page, trackProgram);
 
       await expectProgramCreated(page, programName);
     });
@@ -166,7 +219,10 @@ test.describe('Create new academic program', () => {
       await expect(page.getByRole('button', { name: `Edit ${description}` })).toHaveCount(0);
     });
 
-    test('TC-007: program name at 255 characters is accepted', async ({ page }) => {
+    test('TC-007: program name at 255 characters is accepted', async ({
+      page,
+      trackProgram,
+    }) => {
       const programName = nameOfLength(ASSUMED_PROGRAM_NAME_LENGTH);
       const description = uniqueName('Boundary test program');
 
@@ -174,12 +230,15 @@ test.describe('Create new academic program', () => {
       await programNameField(page).fill(programName);
       await descriptionField(page).fill(description);
       await expect(programNameField(page)).toHaveValue(programName);
-      await createButton(page).click();
+      await clickCreateAndTrack(page, trackProgram);
 
       await expectProgramCreated(page, programName);
     });
 
-    test('TC-008: program name longer than 255 characters is accepted', async ({ page }) => {
+    test('TC-008: program name longer than 255 characters is accepted', async ({
+      page,
+      trackProgram,
+    }) => {
       const programName = nameOfLength(ASSUMED_PROGRAM_NAME_LENGTH + 1);
       const description = uniqueName('Over limit test');
 
@@ -187,20 +246,23 @@ test.describe('Create new academic program', () => {
       await programNameField(page).fill(programName);
       await descriptionField(page).fill(description);
       await expect(programNameField(page)).toHaveValue(programName);
-      await createButton(page).click();
+      await clickCreateAndTrack(page, trackProgram);
 
       await expectProgramCreated(page, programName);
       await expect(newProgramDialog(page).locator('.mantine-InputWrapper-error')).toHaveCount(0);
     });
 
-    test('TC-009: program name with special characters is accepted', async ({ page }) => {
+    test('TC-009: program name with special characters is accepted', async ({
+      page,
+      trackProgram,
+    }) => {
       const programName = uniqueName('Informatique & IA - Niveau 2');
       const description = uniqueName('French-language program with accents: été');
 
       await openCreateForm(page);
       await programNameField(page).fill(programName);
       await descriptionField(page).fill(description);
-      await createButton(page).click();
+      await clickCreateAndTrack(page, trackProgram);
 
       await expectProgramCreated(page, programName);
     });
@@ -234,6 +296,7 @@ test.describe('Create new academic program', () => {
 
     test('TC-012: program is created when optional AI generation fields are filled', async ({
       page,
+      trackProgram,
     }) => {
       const programName = uniqueName('AI Config Program');
       const description = 'Full-stack web development program';
@@ -248,7 +311,7 @@ test.describe('Create new academic program', () => {
       await newProgramDialog(page)
         .getByLabel('Focus Areas')
         .fill('Python, SQL, Machine Learning');
-      await createButton(page).click();
+      await clickCreateAndTrack(page, trackProgram);
 
       await expectProgramCreated(page, programName);
       await expect(programRow(page, programName).locator('p').nth(1)).toHaveText(
@@ -258,56 +321,65 @@ test.describe('Create new academic program', () => {
 
     test('TC-013: leading and trailing whitespace in Program Name is trimmed before save', async ({
       page,
+      trackProgram,
     }) => {
       const programName = uniqueName('Web Development 2026');
       const paddedName = `  ${programName}  `;
 
       await openCreateForm(page);
       await programNameField(page).fill(paddedName);
-      await createButton(page).click();
+      await clickCreateAndTrack(page, trackProgram);
 
       await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
       await expect(programInList(page, programName)).toBeVisible();
       await expect(programInList(page, programName)).toHaveText(programName);
     });
 
-    test('TC-015: duplicate program name is accepted on create', async ({ page }) => {
+    test('TC-015: duplicate program name is accepted on create', async ({
+      page,
+      trackProgram,
+    }) => {
       const programName = uniqueName('Web Development 2026');
 
       await openCreateForm(page);
       await programNameField(page).fill(programName);
       await descriptionField(page).fill('Original program');
-      await createButton(page).click();
+      await clickCreateAndTrack(page, trackProgram);
       await expectProgramCreated(page, programName);
 
       await openCreateForm(page);
       await programNameField(page).fill(programName);
       await descriptionField(page).fill('Duplicate attempt');
-      await createButton(page).click();
+      await clickCreateAndTrack(page, trackProgram);
 
       await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
       await expect(newProgramDialog(page).locator('.mantine-InputWrapper-error')).toHaveCount(0);
       await expect(programRow(page, programName)).toHaveCount(2);
     });
 
-    test('TC-016: rapid double-click on Create produces two program records', async ({ page }) => {
+    test('TC-016: rapid double-click on Create produces two program records', async ({
+      page,
+      trackProgram,
+    }) => {
       const programName = uniqueName('Double Click Program');
 
       await openCreateForm(page);
       await programNameField(page).fill(programName);
-      await createButton(page).dblclick();
+      await dblClickCreateAndTrack(page, trackProgram);
 
-      await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
       await expect(programRow(page, programName)).toHaveCount(2);
     });
 
-    test('TC-017: program creation form is empty after a successful create', async ({ page }) => {
+    test('TC-017: program creation form is empty after a successful create', async ({
+      page,
+      trackProgram,
+    }) => {
       const programName = uniqueName('Reset After Create');
 
       await openCreateForm(page);
       await programNameField(page).fill(programName);
       await descriptionField(page).fill('Should not persist after save');
-      await createButton(page).click();
+      await clickCreateAndTrack(page, trackProgram);
       await expectProgramCreated(page, programName);
 
       await openCreateForm(page);
@@ -318,6 +390,7 @@ test.describe('Create new academic program', () => {
 
     test('TC-018: non-numeric Total Program Hours is stripped and does not block create', async ({
       page,
+      trackProgram,
     }) => {
       const programName = uniqueName('Hours Probe');
 
@@ -332,7 +405,7 @@ test.describe('Create new academic program', () => {
       await expect(createButton(page)).toBeEnabled();
       await expect(newProgramDialog(page).locator('.mantine-InputWrapper-error')).toHaveCount(0);
 
-      await createButton(page).click();
+      await clickCreateAndTrack(page, trackProgram);
       await expectProgramCreated(page, programName);
     });
 
