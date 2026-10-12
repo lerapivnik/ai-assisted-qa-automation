@@ -1,20 +1,16 @@
 // @ts-check
-const path = require('path');
 const { defineConfig, devices } = require('@playwright/test');
-
-require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+const baseConfig = require('./playwright.config');
 
 /** @type {import('@playwright/test').PlaywrightTestConfig} */
 module.exports = defineConfig({
-  testDir: './manual',
+  ...baseConfig,
+  testIgnore: [],
+  testMatch: '**/purge-programs.manual.spec.ts',
   fullyParallel: false,
   retries: 0,
   workers: 1,
-  reporter: [['list'], ['html']],
-  use: {
-    trace: 'off',
-    baseURL: process.env.DIDAXIS_URL,
-  },
+  reporter: 'line',
   projects: [
     {
       name: 'chromium',

@@ -7,6 +7,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 /** @type {import('@playwright/test').PlaywrightTestConfig} */
 module.exports = defineConfig({
   testDir: './tests',
+  testIgnore: '**/*.manual.spec.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
