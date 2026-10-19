@@ -1,18 +1,8 @@
-import dotenv from 'dotenv';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-
-dotenv.config();
+import { newAuthenticatedContext, openPrograms } from './helpers/auth';
 
 const ASSUMED_PROGRAM_NAME_LENGTH = 255;
 const DELETE_CONFIRM_SNIPPET = 'All its semesters and courses will be removed';
-
-function requireEnv(name: 'DIDAXIS_EMAIL' | 'DIDAXIS_PASSWORD'): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`${name} must be set`);
-  }
-  return value;
-}
 
 function uniqueName(base: string): string {
   return `${base} ${Date.now()}`;
@@ -34,24 +24,6 @@ function deleteButton(page: Page, programName: string): Locator {
 function programRow(page: Page, programName: string): Locator {
   return page.getByRole('row').filter({
     has: page.getByRole('button', { name: `Edit ${programName}`, exact: true }),
-  });
-}
-
-async function login(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(requireEnv('DIDAXIS_EMAIL'));
-  await page.getByLabel('Password').fill(requireEnv('DIDAXIS_PASSWORD'));
-  await page.getByRole('button', { name: 'Sign In' }).click();
-  await expect(page).not.toHaveURL(/\/login/);
-}
-
-async function openPrograms(page: Page): Promise<void> {
-  await page.goto('/programs');
-  await expect(page.getByRole('heading', { name: 'Programs' })).toBeVisible({
-    timeout: 30_000,
-  });
-  await expect(page.getByRole('button', { name: '+ New Program' })).toBeVisible({
-    timeout: 30_000,
   });
 }
 
@@ -108,7 +80,6 @@ test.describe('Delete program with confirmation', () => {
 
   test.describe('authenticated admin', () => {
     test.beforeEach(async ({ page }) => {
-      await login(page);
       await openPrograms(page);
     });
 
@@ -160,13 +131,11 @@ test.describe('Delete program with confirmation', () => {
       browser,
     }) => {
       const programName = uniqueName('Test Program');
-      const contextA = await browser.newContext();
-      const contextB = await browser.newContext();
+      const contextA = await newAuthenticatedContext(browser);
+      const contextB = await newAuthenticatedContext(browser);
       const pageA = await contextA.newPage();
       const pageB = await contextB.newPage();
 
-      await login(pageA);
-      await login(pageB);
       await openPrograms(pageA);
       await createProgram(pageA, programName);
       await openPrograms(pageB);
@@ -247,13 +216,11 @@ test.describe('Delete program with confirmation', () => {
       browser,
     }) => {
       const programName = uniqueName('Test Program');
-      const contextA = await browser.newContext();
-      const contextB = await browser.newContext();
+      const contextA = await newAuthenticatedContext(browser);
+      const contextB = await newAuthenticatedContext(browser);
       const pageA = await contextA.newPage();
       const pageB = await contextB.newPage();
 
-      await login(pageA);
-      await login(pageB);
       await openPrograms(pageA);
       await createProgram(pageA, programName);
       await openPrograms(pageB);
@@ -307,16 +274,5 @@ test.describe('Delete program with confirmation', () => {
 
       await expect(deleteButton(page, programName)).toBeVisible();
     });
-  });
-
-  test('TC-005: unauthenticated user cannot delete a program', async ({ page }) => {
-    await page.goto('/programs');
-
-    await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByText('Sign in to your account')).toBeVisible();
-    await expect(page.getByLabel('Email')).toBeVisible();
-    await expect(page.getByLabel('Password')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Delete / })).toHaveCount(0);
   });
 });

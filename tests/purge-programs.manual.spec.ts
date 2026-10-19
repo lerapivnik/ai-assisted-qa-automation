@@ -1,4 +1,5 @@
 import { expect, request, test, type APIRequestContext, type Page } from '@playwright/test';
+import { openPrograms } from './helpers/auth';
 
 const baseURL = process.env.DIDAXIS_URL ?? 'https://test.didaxis.studio';
 
@@ -15,14 +16,6 @@ function purgeLimit(): number | 'all' {
   );
 }
 
-function requireEnv(name: 'DIDAXIS_EMAIL' | 'DIDAXIS_PASSWORD'): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`${name} must be set`);
-  }
-  return value;
-}
-
 function apiContext(token: string) {
   return request.newContext({
     baseURL,
@@ -30,23 +23,18 @@ function apiContext(token: string) {
   });
 }
 
-async function captureTokenFromLogin(page: Page): Promise<string> {
+async function captureTokenFromSession(page: Page): Promise<string> {
   const requestPromise = page.waitForRequest(
     (req) =>
       req.url().includes('/api/') && Boolean(req.headers()['authorization']),
     { timeout: 30_000 },
   );
 
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(requireEnv('DIDAXIS_EMAIL'));
-  await page.getByLabel('Password').fill(requireEnv('DIDAXIS_PASSWORD'));
-  await page.getByRole('button', { name: 'Sign In' }).click();
-  await expect(page).not.toHaveURL(/\/login/);
-  await page.goto('/programs');
+  await openPrograms(page);
 
   const authorization = (await requestPromise).headers()['authorization'];
   if (!authorization?.startsWith('Bearer ')) {
-    throw new Error('No Bearer token on API request after login');
+    throw new Error('No Bearer token on API request after opening Programs');
   }
   return authorization.slice('Bearer '.length).trim();
 }
@@ -70,7 +58,7 @@ test('manually purge programs from GET /api/programs', async ({ page }) => {
   test.setTimeout(60 * 60 * 1000);
   const limit = purgeLimit();
 
-  const token = await captureTokenFromLogin(page);
+  const token = await captureTokenFromSession(page);
   const list = await getPrograms(token);
 
   expect(list.status, `GET /api/programs failed: ${list.status}`).toBeLessThan(400);

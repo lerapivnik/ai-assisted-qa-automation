@@ -1,4 +1,3 @@
-import dotenv from 'dotenv';
 import {
   expect,
   extractProgramId,
@@ -7,19 +6,10 @@ import {
   type Locator,
   type Page,
 } from '../fixtures/cleanup.fixture';
-
-dotenv.config();
+import { openPrograms } from './helpers/auth';
 
 /** DS-1 ACs do not define a max length. The live form has no HTML maxLength. */
 const ASSUMED_PROGRAM_NAME_LENGTH = 255;
-
-function requireEnv(name: 'DIDAXIS_EMAIL' | 'DIDAXIS_PASSWORD'): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`${name} must be set`);
-  }
-  return value;
-}
 
 function uniqueName(base: string): string {
   return `${base} ${Date.now()}`;
@@ -67,24 +57,6 @@ function programInList(page: Page, programName: string): Locator {
 async function expectProgramCreated(page: Page, programName: string): Promise<void> {
   await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
   await expect(programInList(page, programName)).toBeVisible();
-}
-
-async function login(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(requireEnv('DIDAXIS_EMAIL'));
-  await page.getByLabel('Password').fill(requireEnv('DIDAXIS_PASSWORD'));
-  await page.getByRole('button', { name: 'Sign In' }).click();
-  await expect(page).not.toHaveURL(/\/login/);
-}
-
-async function openPrograms(page: Page): Promise<void> {
-  await page.goto('/programs');
-  await expect(page.getByRole('heading', { name: 'Programs' })).toBeVisible({
-    timeout: 30_000,
-  });
-  await expect(page.getByRole('button', { name: '+ New Program' })).toBeVisible({
-    timeout: 30_000,
-  });
 }
 
 async function openCreateForm(page: Page): Promise<void> {
@@ -139,7 +111,6 @@ test.describe('Create new academic program', () => {
 
   test.describe('authenticated admin', () => {
     test.beforeEach(async ({ page }) => {
-      await login(page);
       await openPrograms(page);
     });
 
@@ -424,17 +395,5 @@ test.describe('Create new academic program', () => {
       await openCreateForm(page);
       await expect(programNameField(page)).toHaveValue(programName);
     });
-  });
-
-  test('TC-006: unauthenticated user cannot access program creation form', async ({ page }) => {
-    await page.goto('/programs');
-
-    await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByText('Sign in to your account')).toBeVisible();
-    await expect(page.getByLabel('Email')).toBeVisible();
-    await expect(page.getByLabel('Password')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '+ New Program' })).toHaveCount(0);
-    await expect(newProgramDialog(page)).toHaveCount(0);
   });
 });

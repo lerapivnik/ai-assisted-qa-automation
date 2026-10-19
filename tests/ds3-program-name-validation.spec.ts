@@ -1,18 +1,8 @@
-import dotenv from 'dotenv';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-
-dotenv.config();
+import { openPrograms } from './helpers/auth';
 
 /** Jira does not define a max length. The live form has no HTML maxLength. */
 const ASSUMED_PROGRAM_NAME_LENGTH = 255;
-
-function requireEnv(name: 'DIDAXIS_EMAIL' | 'DIDAXIS_PASSWORD'): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`${name} must be set`);
-  }
-  return value;
-}
 
 function uniqueName(base: string): string {
   return `${base} ${Date.now()}`;
@@ -53,24 +43,6 @@ function programInList(page: Page, programName: string): Locator {
   return programRow(page, programName).locator('p').first();
 }
 
-async function login(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(requireEnv('DIDAXIS_EMAIL'));
-  await page.getByLabel('Password').fill(requireEnv('DIDAXIS_PASSWORD'));
-  await page.getByRole('button', { name: 'Sign In' }).click();
-  await expect(page).not.toHaveURL(/\/login/);
-}
-
-async function openPrograms(page: Page): Promise<void> {
-  await page.goto('/programs');
-  await expect(page.getByRole('heading', { name: 'Programs' })).toBeVisible({
-    timeout: 30_000,
-  });
-  await expect(page.getByRole('button', { name: '+ New Program' })).toBeVisible({
-    timeout: 30_000,
-  });
-}
-
 async function openCreateForm(page: Page): Promise<void> {
   await page.getByRole('button', { name: '+ New Program' }).click();
   await expect(newProgramDialog(page)).toBeVisible();
@@ -100,7 +72,6 @@ test.describe('Program name validation and duplicate prevention', () => {
 
   test.describe('authenticated admin', () => {
     test.beforeEach(async ({ page }) => {
-      await login(page);
       await openPrograms(page);
     });
 

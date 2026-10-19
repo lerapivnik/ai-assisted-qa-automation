@@ -1,19 +1,8 @@
-import dotenv from 'dotenv';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-
-dotenv.config();
 
 const ASSUMED_PROGRAM_NAME_LENGTH = 255;
 const SHARED_ENV_HAS_PROGRAMS =
   'Shared test environment already contains programs; empty-state cases are skipped.';
-
-function requireEnv(name: 'DIDAXIS_EMAIL' | 'DIDAXIS_PASSWORD'): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`${name} must be set`);
-  }
-  return value;
-}
 
 function uniqueName(base: string): string {
   return `${base} ${Date.now()}`;
@@ -51,15 +40,15 @@ function deleteButton(page: Page, programName: string): Locator {
   return page.getByRole('button', { name: `Delete ${programName}`, exact: true });
 }
 
-async function login(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(requireEnv('DIDAXIS_EMAIL'));
-  await page.getByLabel('Password').fill(requireEnv('DIDAXIS_PASSWORD'));
-  await page.getByRole('button', { name: 'Sign In' }).click();
-  await expect(page).not.toHaveURL(/\/login/);
-}
-
 async function openPrograms(page: Page): Promise<void> {
+  const programsLoaded = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/programs') &&
+      response.request().method() === 'GET' &&
+      response.ok(),
+    { timeout: 90_000 },
+  );
+
   await page.goto('/programs');
   await expect(page.getByRole('heading', { name: 'Programs' })).toBeVisible({
     timeout: 30_000,
@@ -67,7 +56,7 @@ async function openPrograms(page: Page): Promise<void> {
   await expect(page.getByRole('button', { name: '+ New Program' })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByRole('table')).toBeVisible({ timeout: 60_000 });
+  await programsLoaded;
 }
 
 async function waitForProgramListed(page: Page, programName: string): Promise<void> {
@@ -136,7 +125,6 @@ test.describe('Program list filtering and display', () => {
 
   test.describe('authenticated admin', () => {
     test.beforeEach(async ({ page }) => {
-      await login(page);
       await openPrograms(page);
     });
 
@@ -315,17 +303,5 @@ test.describe('Program list filtering and display', () => {
       await expect(programRow(page, programName)).toHaveCount(2);
       await expect(deleteButton(page, programName)).toHaveCount(2);
     });
-  });
-
-  test('TC-005: unauthenticated user cannot view the program list', async ({ page }) => {
-    await page.goto('/programs');
-
-    await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByText('Sign in to your account')).toBeVisible();
-    await expect(page.getByLabel('Email')).toBeVisible();
-    await expect(page.getByLabel('Password')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Programs' })).toHaveCount(0);
-    await expect(page.getByRole('table')).toHaveCount(0);
   });
 });

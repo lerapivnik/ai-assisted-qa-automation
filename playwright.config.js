@@ -4,6 +4,21 @@ const { defineConfig, devices } = require('@playwright/test');
 
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
+const authStorageState = 'playwright/.auth/user.json';
+
+/** @param {string} name @param {string} device */
+function authenticatedBrowserProject(name, device) {
+  return {
+    name,
+    use: {
+      ...devices[device],
+      storageState: authStorageState,
+    },
+    dependencies: ['setup'],
+    testIgnore: [/.*\.setup\.ts/, /.*\.manual\.spec\.ts/],
+  };
+}
+
 /** @type {import('@playwright/test').PlaywrightTestConfig} */
 module.exports = defineConfig({
   testDir: './tests',
@@ -19,16 +34,11 @@ module.exports = defineConfig({
   },
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
     },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
+    authenticatedBrowserProject('chromium', 'Desktop Chrome'),
+    authenticatedBrowserProject('firefox', 'Desktop Firefox'),
+    authenticatedBrowserProject('webkit', 'Desktop Safari'),
   ],
 });
