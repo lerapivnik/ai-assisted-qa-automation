@@ -1,6 +1,12 @@
-import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import {
+  expect,
+  isProgramCreateResponse,
+  test,
+  trackCreateFromResponse,
+} from '../fixtures/cleanup.fixture';
 import { ProgramsPage } from '../pages/ProgramsPage';
+import { uniqueName } from './helpers/programs';
 
 const axeTags = ['wcag2a', 'wcag2aa'] as const;
 
@@ -44,6 +50,35 @@ test.describe('Programs accessibility', () => {
       await programsPage.goto();
       await expect(programsPage.heading).toBeVisible({ timeout: 30_000 });
       await programsPage.openNewProgramForm();
+      await expect(modal.dialog).toBeVisible();
+
+      const results = await new AxeBuilder({ page })
+        .include(await modal.a11yIncludeSelector())
+        .withTags([...axeTags])
+        .analyze();
+
+      await expect(results.violations).toEqual([]);
+    },
+  );
+
+  test(
+    'Edit Program modal has no axe violations in scoped scan',
+    { tag: '@regression' },
+    async ({ page, trackProgram }) => {
+      const programsPage = new ProgramsPage(page);
+      const modal = programsPage.editProgramModal;
+      const programName = uniqueName('A11y Edit Program');
+
+      await programsPage.goto();
+      await expect(programsPage.heading).toBeVisible({ timeout: 30_000 });
+
+      await programsPage.openNewProgramForm();
+      const createResponse = page.waitForResponse(isProgramCreateResponse);
+      await programsPage.createProgram(programName);
+      await trackCreateFromResponse(await createResponse, trackProgram);
+      await expect(programsPage.newProgramModal.dialog).toBeHidden({ timeout: 45_000 });
+
+      await programsPage.openEditForm(programName);
       await expect(modal.dialog).toBeVisible();
 
       const results = await new AxeBuilder({ page })

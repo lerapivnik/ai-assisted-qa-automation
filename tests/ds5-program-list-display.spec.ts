@@ -1,123 +1,57 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test } from '../fixtures/cleanup.fixture';
+import { ProgramsPage } from '../pages/ProgramsPage';
+import { createTrackedProgram, nameOfLength, uniqueName } from './helpers/programs';
 
 const ASSUMED_PROGRAM_NAME_LENGTH = 255;
 const SHARED_ENV_HAS_PROGRAMS =
   'Shared test environment already contains programs; empty-state cases are skipped.';
-
-function uniqueName(base: string): string {
-  return `${base} ${Date.now()}`;
-}
-
-function nameOfLength(length: number): string {
-  const suffix = ` ${Date.now()}`;
-  return `${'A'.repeat(length - suffix.length)}${suffix}`;
-}
 
 function descriptionOfLength(length: number): string {
   const suffix = ` ${Date.now()}`;
   return `${'D'.repeat(length - suffix.length)}${suffix}`;
 }
 
-function newProgramDialog(page: Page): Locator {
-  return page.getByRole('dialog', { name: 'New Program' });
-}
-
-function editProgramDialog(page: Page): Locator {
-  return page.getByRole('dialog', { name: 'Edit Program' });
-}
-
-function programRow(page: Page, programName: string): Locator {
-  return page.getByRole('row').filter({
-    has: page.getByRole('button', { name: `Edit ${programName}`, exact: true }),
-  });
-}
-
-function programNameInList(page: Page, programName: string): Locator {
-  return programRow(page, programName).locator('p').first();
-}
-
-function deleteButton(page: Page, programName: string): Locator {
-  return page.getByRole('button', { name: `Delete ${programName}`, exact: true });
-}
-
-async function openPrograms(page: Page): Promise<void> {
-  const programsLoaded = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/programs') &&
-      response.request().method() === 'GET' &&
-      response.ok(),
-    { timeout: 90_000 },
-  );
-
-  await page.goto('/programs');
-  await expect(page.getByRole('heading', { name: 'Programs' })).toBeVisible({
-    timeout: 30_000,
-  });
-  await expect(page.getByRole('button', { name: '+ New Program' })).toBeVisible({
-    timeout: 30_000,
-  });
-  await programsLoaded;
-}
-
-async function waitForProgramListed(page: Page, programName: string): Promise<void> {
-  const edit = page.getByRole('button', { name: `Edit ${programName}`, exact: true });
+async function waitForProgramListed(
+  programsPage: ProgramsPage,
+  programName: string,
+): Promise<void> {
+  const edit = programsPage.programEditButton(programName);
   await expect(edit).toBeVisible({ timeout: 60_000 });
   await edit.scrollIntoViewIfNeeded();
 }
 
-async function createProgram(
-  page: Page,
+async function deleteProgram(
+  programsPage: ProgramsPage,
   programName: string,
-  description = '',
 ): Promise<void> {
-  await page.getByRole('button', { name: '+ New Program' }).click();
-  const dialog = newProgramDialog(page);
-  await dialog.getByLabel('Program Name').fill(programName);
-  if (description) {
-    await dialog.getByLabel('Description').fill(description);
-  }
-  await dialog.getByRole('button', { name: 'Create' }).click();
-  await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
-  await waitForProgramListed(page, programName);
-  await expect(programNameInList(page, programName)).toBeVisible();
-}
-
-async function deleteProgram(page: Page, programName: string): Promise<void> {
-  const button = deleteButton(page, programName);
-  await button.scrollIntoViewIfNeeded();
-
   const handled = new Promise<void>((resolve) => {
-    page.once('dialog', async (dialog) => {
+    programsPage.page.once('dialog', async (dialog) => {
       await dialog.accept();
       resolve();
     });
   });
 
-  await button.click();
+  await programsPage.clickDelete(programName);
   await handled;
 
-  await expect(deleteButton(page, programName)).toHaveCount(0, { timeout: 30_000 });
+  await expect(programsPage.programDeleteButton(programName)).toHaveCount(0, {
+    timeout: 30_000,
+  });
 }
 
-async function orderedNamesForBatch(page: Page, batchId: string): Promise<string[]> {
+async function orderedNamesForBatch(
+  programsPage: ProgramsPage,
+  batchId: string,
+): Promise<string[]> {
   const editPattern = new RegExp(`^Edit .+${batchId}$`);
-  await expect(page.getByRole('button', { name: editPattern }).first()).toBeVisible({
+  await expect(programsPage.programEditButtonsMatching(editPattern).nth(0)).toBeVisible({
     timeout: 60_000,
   });
-
-  const rows = page.getByRole('row').filter({
-    has: page.getByRole('button', { name: editPattern }),
+  await expect(programsPage.programRowsMatching(editPattern).nth(0)).toBeVisible({
+    timeout: 60_000,
   });
-  await expect(rows.first()).toBeVisible({ timeout: 60_000 });
-  const count = await rows.count();
-  const names: string[] = [];
-  for (let i = 0; i < count; i += 1) {
-    const nameLine = await rows.nth(i).locator('p').first().innerText();
-    if (nameLine.includes(batchId)) {
-      names.push(nameLine.trim());
-    }
-  }
-  return names;
+  const names = await programsPage.listedProgramNames(editPattern);
+  return names.filter((name) => name.includes(batchId));
 }
 
 test.describe('Program list filtering and display', () => {
@@ -125,24 +59,29 @@ test.describe('Program list filtering and display', () => {
 
   test.describe('authenticated admin', () => {
     test.beforeEach(async ({ page }) => {
-      await openPrograms(page);
+      const programsPage = new ProgramsPage(page);
+      await programsPage.goto({ waitForList: true });
+      await expect(programsPage.heading).toBeVisible({ timeout: 30_000 });
+      await expect(programsPage.newProgramButton).toBeVisible({ timeout: 30_000 });
     });
 
     test('TC-001: program list displays name and description for each existing program', async ({
       page,
+      trackProgram,
     }) => {
+      const programsPage = new ProgramsPage(page);
       const webDev = uniqueName('Web Development 2026');
       const dataScience = uniqueName('Data Science 2026');
       const webDesc = uniqueName('Full-stack web development program');
       const dataDesc = uniqueName('Machine learning and analytics program');
 
-      await createProgram(page, webDev, webDesc);
-      await createProgram(page, dataScience, dataDesc);
+      await createTrackedProgram(programsPage, trackProgram, webDev, webDesc);
+      await createTrackedProgram(programsPage, trackProgram, dataScience, dataDesc);
 
-      await expect(programRow(page, webDev)).toBeVisible();
-      await expect(programRow(page, webDev).locator('p').nth(1)).toHaveText(webDesc);
-      await expect(programRow(page, dataScience)).toBeVisible();
-      await expect(programRow(page, dataScience).locator('p').nth(1)).toHaveText(dataDesc);
+      await expect(programsPage.programRow(webDev)).toBeVisible();
+      await expect(programsPage.programDescriptionInList(webDev, webDesc)).toBeVisible();
+      await expect(programsPage.programRow(dataScience)).toBeVisible();
+      await expect(programsPage.programDescriptionInList(dataScience, dataDesc)).toBeVisible();
     });
 
     test('TC-002: empty state message and create prompt are shown when no programs exist', async () => {
@@ -155,116 +94,143 @@ test.describe('Program list filtering and display', () => {
 
     test('TC-004: program with empty description displays only the name line in the list', async ({
       page,
+      trackProgram,
     }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Data Science 2026');
-      await createProgram(page, programName);
+      await createTrackedProgram(programsPage, trackProgram, programName);
 
-      const row = programRow(page, programName);
+      const row = programsPage.programRow(programName);
       await expect(row).toBeVisible();
-      await expect(programNameInList(page, programName)).toHaveText(programName);
-      await expect(row.locator('p')).toHaveCount(1);
+      await expect(programsPage.programNameInList(programName)).toHaveText(programName);
+      await expect(programsPage.programParagraphs(programName)).toHaveCount(1);
     });
 
     test('TC-014: Programs page shows table layout and row management actions', async ({
       page,
+      trackProgram,
     }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
-      await createProgram(page, programName, uniqueName('Row actions probe'));
+      await createTrackedProgram(
+        programsPage,
+        trackProgram,
+        programName,
+        uniqueName('Row actions probe'),
+      );
 
-      await expect(page.getByRole('columnheader', { name: 'Program' })).toBeVisible();
-      await expect(page.getByRole('table')).toBeVisible();
-      await expect(
-        page.getByRole('button', { name: `Edit ${programName}`, exact: true }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole('button', { name: `Delete ${programName}`, exact: true }),
-      ).toBeVisible();
+      await expect(programsPage.programColumnHeader).toBeVisible();
+      await expect(programsPage.table).toBeVisible();
+      await expect(programsPage.programEditButton(programName)).toBeVisible();
+      await expect(programsPage.programDeleteButton(programName)).toBeVisible();
     });
 
     test('TC-006: program list does not show stale data after a program is deleted', async ({
       page,
+      trackProgram,
     }) => {
+      const programsPage = new ProgramsPage(page);
       const webDev = uniqueName('Web Development 2026');
       const dataScience = uniqueName('Data Science 2026');
-      await createProgram(page, webDev, uniqueName('Web stack'));
-      await createProgram(page, dataScience, uniqueName('Data stack'));
+      await createTrackedProgram(programsPage, trackProgram, webDev, uniqueName('Web stack'));
+      await createTrackedProgram(programsPage, trackProgram, dataScience, uniqueName('Data stack'));
 
-      await deleteProgram(page, dataScience);
+      await deleteProgram(programsPage, dataScience);
 
-      await expect(deleteButton(page, dataScience)).toHaveCount(0);
-      await expect(programNameInList(page, webDev)).toBeVisible();
+      await expect(programsPage.programDeleteButton(dataScience)).toHaveCount(0);
+      await expect(programsPage.programNameInList(webDev)).toBeVisible();
     });
 
     test('TC-007: program list does not show duplicate entries after creating a program once', async ({
       page,
+      trackProgram,
     }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Cloud Computing 2026');
-      await createProgram(page, programName, uniqueName('Cloud curriculum'));
+      await createTrackedProgram(
+        programsPage,
+        trackProgram,
+        programName,
+        uniqueName('Cloud curriculum'),
+      );
 
-      await expect(programRow(page, programName)).toHaveCount(1);
+      await expect(programsPage.programRow(programName)).toHaveCount(1);
     });
 
     test('TC-015: Programs page has no search or filter controls', async ({ page }) => {
-      await expect(page.getByPlaceholder(/search/i)).toHaveCount(0);
-      await expect(page.getByRole('button', { name: /filter/i })).toHaveCount(0);
-      await expect(page.getByRole('textbox', { name: /search/i })).toHaveCount(0);
+      const programsPage = new ProgramsPage(page);
+      await expect(programsPage.searchPlaceholder).toHaveCount(0);
+      await expect(programsPage.filterButton).toHaveCount(0);
+      await expect(programsPage.searchTextbox).toHaveCount(0);
     });
 
     test('TC-008: program list displays programs with special characters correctly', async ({
       page,
+      trackProgram,
     }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Informatique & IA - Niveau 2');
       const description = uniqueName("Programme avancé d'informatique");
-      await createProgram(page, programName, description);
+      await createTrackedProgram(programsPage, trackProgram, programName, description);
 
-      await expect(programRow(page, programName)).toBeVisible();
-      await expect(programRow(page, programName).locator('p').nth(1)).toHaveText(description);
+      await expect(programsPage.programRow(programName)).toBeVisible();
+      await expect(programsPage.programDescriptionInList(programName, description)).toBeVisible();
     });
 
     test('TC-009: program list handles a large number of programs via scrollable table', async ({
       page,
     }) => {
+      const programsPage = new ProgramsPage(page);
       const startedAt = Date.now();
-      await expect(page.getByRole('table')).toBeVisible({ timeout: 30_000 });
-      await page.getByRole('table').evaluate((table) => {
+      await expect(programsPage.table).toBeVisible({ timeout: 30_000 });
+      await programsPage.table.evaluate((table) => {
         table.scrollTop = table.scrollHeight;
       });
-      await expect(page.getByRole('columnheader', { name: 'Program' })).toBeVisible();
+      await expect(programsPage.programColumnHeader).toBeVisible();
       expect(Date.now() - startedAt).toBeLessThan(60_000);
-      expect(await page.getByRole('row').count()).toBeGreaterThanOrEqual(50);
+      expect(await programsPage.rows.count()).toBeGreaterThanOrEqual(50);
     });
 
     test('TC-010: program with long name and description appears in the list', async ({
       page,
+      trackProgram,
     }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = nameOfLength(ASSUMED_PROGRAM_NAME_LENGTH);
       const description = descriptionOfLength(500);
-      await createProgram(page, programName, description);
+      await createTrackedProgram(programsPage, trackProgram, programName, description);
 
-      const row = programRow(page, programName);
+      const row = programsPage.programRow(programName);
       await expect(row).toBeVisible();
-      await expect(programNameInList(page, programName)).toHaveText(programName);
-      const descLine = row.locator('p').nth(1);
+      await expect(programsPage.programNameInList(programName)).toHaveText(programName);
+      const descLine = programsPage.programParagraphs(programName).nth(1);
       await expect(descLine).toBeVisible();
       await expect(descLine).toHaveAttribute('data-line-clamp', 'true');
     });
 
-    test('TC-011: program list updates immediately after editing a program', async ({ page }) => {
+    test('TC-011: program list updates immediately after editing a program', async ({
+      page,
+      trackProgram,
+    }) => {
+      const programsPage = new ProgramsPage(page);
+      const modal = programsPage.editProgramModal;
       const programName = uniqueName('Web Development 2026');
       const updatedName = uniqueName('Web Development 2026 - Updated');
-      await createProgram(page, programName, uniqueName('Original curriculum'));
+      await createTrackedProgram(
+        programsPage,
+        trackProgram,
+        programName,
+        uniqueName('Original curriculum'),
+      );
 
-      await page.getByRole('button', { name: `Edit ${programName}`, exact: true }).click();
-      const dialog = editProgramDialog(page);
-      await dialog.getByLabel('Program Name').fill(updatedName);
-      await dialog.getByRole('button', { name: 'Save' }).click();
-      await expect(editProgramDialog(page)).toBeHidden({ timeout: 45_000 });
+      await programsPage.openEditForm(programName);
+      await modal.programName.fill(updatedName);
+      await modal.save();
+      await expect(modal.dialog).toBeHidden({ timeout: 45_000 });
 
-      await expect(programNameInList(page, updatedName)).toBeVisible();
-      await expect(deleteButton(page, programName)).toHaveCount(0);
-      await expect(
-        page.getByRole('button', { name: `Edit ${updatedName}`, exact: true }),
-      ).toBeVisible();
+      await expect(programsPage.programNameInList(updatedName)).toBeVisible();
+      await expect(programsPage.programDeleteButton(programName)).toHaveCount(0);
+      await expect(programsPage.programEditButton(updatedName)).toBeVisible();
     });
 
     test('TC-012: empty state transitions to list view after creating the first program', async () => {
@@ -273,35 +239,46 @@ test.describe('Program list filtering and display', () => {
 
     test('TC-013: program list sort order is stable across refresh for a batch of programs', async ({
       page,
+      trackProgram,
     }) => {
+      const programsPage = new ProgramsPage(page);
       const batchId = String(Date.now());
       const alpha = `Alpha Program ${batchId}`;
       const beta = `Beta Program ${batchId}`;
       const gamma = `Gamma Program ${batchId}`;
 
-      await createProgram(page, alpha);
-      await createProgram(page, beta);
-      await createProgram(page, gamma);
+      await createTrackedProgram(programsPage, trackProgram, alpha);
+      await createTrackedProgram(programsPage, trackProgram, beta);
+      await createTrackedProgram(programsPage, trackProgram, gamma);
 
-      const firstOrder = await orderedNamesForBatch(page, batchId);
+      const firstOrder = await orderedNamesForBatch(programsPage, batchId);
       expect(firstOrder).toHaveLength(3);
       expect(new Set(firstOrder)).toEqual(new Set([alpha, beta, gamma]));
 
-      await page.reload();
-      await openPrograms(page);
-      await waitForProgramListed(page, alpha);
-      const secondOrder = await orderedNamesForBatch(page, batchId);
+      await programsPage.reloadList();
+      await expect(programsPage.heading).toBeVisible({ timeout: 30_000 });
+      await waitForProgramListed(programsPage, alpha);
+      const secondOrder = await orderedNamesForBatch(programsPage, batchId);
 
       expect(secondOrder).toEqual(firstOrder);
     });
 
-    test('TC-016: duplicate program names appear as separate rows', async ({ page }) => {
+    test('TC-016: duplicate program names appear as separate rows', async ({
+      page,
+      trackProgram,
+    }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Web Development 2026');
-      await createProgram(page, programName, uniqueName('First duplicate'));
-      await createProgram(page, programName, uniqueName('Second duplicate'));
+      await createTrackedProgram(programsPage, trackProgram, programName, uniqueName('First duplicate'));
+      await createTrackedProgram(
+        programsPage,
+        trackProgram,
+        programName,
+        uniqueName('Second duplicate'),
+      );
 
-      await expect(programRow(page, programName)).toHaveCount(2);
-      await expect(deleteButton(page, programName)).toHaveCount(2);
+      await expect(programsPage.programRow(programName)).toHaveCount(2);
+      await expect(programsPage.programDeleteButton(programName)).toHaveCount(2);
     });
   });
 });

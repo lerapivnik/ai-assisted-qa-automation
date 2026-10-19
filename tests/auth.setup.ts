@@ -1,6 +1,8 @@
 import { mkdirSync } from 'fs';
 import path from 'path';
 import { expect, test as setup } from '@playwright/test';
+import { LoginPage } from '../pages/LoginPage';
+import { ProgramsPage } from '../pages/ProgramsPage';
 import { authStorageStatePath } from './helpers/auth';
 
 function requireEnv(name: 'DIDAXIS_EMAIL' | 'DIDAXIS_PASSWORD'): string {
@@ -12,14 +14,14 @@ function requireEnv(name: 'DIDAXIS_EMAIL' | 'DIDAXIS_PASSWORD'): string {
 }
 
 setup('authenticate', async ({ page }) => {
-  await page.goto('https://test.didaxis.studio/login');
-  await page.getByLabel('Email').fill(requireEnv('DIDAXIS_EMAIL'));
-  await page.getByLabel('Password').fill(requireEnv('DIDAXIS_PASSWORD'));
-  await page.getByRole('button', { name: 'Sign In' }).click();
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({
-    timeout: 30_000,
-  });
-  await page.goto('https://test.didaxis.studio/programs');
+  const loginPage = new LoginPage(page);
+  const programsPage = new ProgramsPage(page);
+
+  await loginPage.goto();
+  await loginPage.login(requireEnv('DIDAXIS_EMAIL'), requireEnv('DIDAXIS_PASSWORD'));
+  await expect(loginPage.dashboardHeading).toBeVisible({ timeout: 30_000 });
+
+  await programsPage.goto();
   await page.waitForURL('**/programs');
   mkdirSync(path.dirname(authStorageStatePath), { recursive: true });
   await page.context().storageState({ path: authStorageStatePath });

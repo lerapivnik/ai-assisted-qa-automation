@@ -1,78 +1,40 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test } from '../fixtures/cleanup.fixture';
+import { ProgramsPage } from '../pages/ProgramsPage';
 import { newAuthenticatedContext, openPrograms } from './helpers/auth';
+import { createTrackedProgram, nameOfLength, uniqueName } from './helpers/programs';
 
 const ASSUMED_PROGRAM_NAME_LENGTH = 255;
 const DELETE_CONFIRM_SNIPPET = 'All its semesters and courses will be removed';
 
-function uniqueName(base: string): string {
-  return `${base} ${Date.now()}`;
-}
-
-function nameOfLength(length: number): string {
-  const suffix = ` ${Date.now()}`;
-  return `${'A'.repeat(length - suffix.length)}${suffix}`;
-}
-
-function newProgramDialog(page: Page): Locator {
-  return page.getByRole('dialog', { name: 'New Program' });
-}
-
-function deleteButton(page: Page, programName: string): Locator {
-  return page.getByRole('button', { name: `Delete ${programName}`, exact: true });
-}
-
-function programRow(page: Page, programName: string): Locator {
-  return page.getByRole('row').filter({
-    has: page.getByRole('button', { name: `Edit ${programName}`, exact: true }),
-  });
-}
-
-async function createProgram(
-  page: Page,
-  programName: string,
-  description = '',
-): Promise<void> {
-  await page.getByRole('button', { name: '+ New Program' }).click();
-  const dialog = newProgramDialog(page);
-  await dialog.getByLabel('Program Name').fill(programName);
-  if (description) {
-    await dialog.getByLabel('Description').fill(description);
-  }
-  await dialog.getByRole('button', { name: 'Create' }).click();
-  await expect(newProgramDialog(page)).toBeHidden({ timeout: 45_000 });
-  await expect(programRow(page, programName)).toBeVisible();
-}
-
 async function triggerDelete(
-  page: Page,
+  programsPage: ProgramsPage,
   programName: string,
   action: 'accept' | 'dismiss',
-): Promise<string> {
-  const button = deleteButton(page, programName);
-  await button.scrollIntoViewIfNeeded();
-
-  let message = '';
-  const dialogHandled = new Promise<void>((resolve) => {
-    page.once('dialog', async (dialog) => {
-      expect(dialog.type()).toBe('confirm');
-      message = dialog.message();
+): Promise<{ type: string; message: string }> {
+  const handled = new Promise<{ type: string; message: string }>((resolve) => {
+    programsPage.page.once('dialog', async (dialog) => {
+      const result = { type: dialog.type(), message: dialog.message() };
       if (action === 'accept') {
         await dialog.accept();
       } else {
         await dialog.dismiss();
       }
-      resolve();
+      resolve(result);
     });
   });
 
-  await button.click();
-  await dialogHandled;
-  return message;
+  await programsPage.clickDelete(programName);
+  return handled;
 }
 
-async function expectProgramAbsent(page: Page, programName: string): Promise<void> {
-  await expect(deleteButton(page, programName)).toHaveCount(0, { timeout: 30_000 });
-  await expect(programRow(page, programName)).toHaveCount(0);
+async function expectProgramAbsent(
+  programsPage: ProgramsPage,
+  programName: string,
+): Promise<void> {
+  await expect(programsPage.programDeleteButton(programName)).toHaveCount(0, {
+    timeout: 30_000,
+  });
+  await expect(programsPage.programRow(programName)).toHaveCount(0);
 }
 
 test.describe('Delete program with confirmation', () => {
@@ -83,69 +45,82 @@ test.describe('Delete program with confirmation', () => {
       await openPrograms(page);
     });
 
-    test('TC-001: program is permanently removed after confirming deletion', async ({ page }) => {
+    test('TC-001: program is permanently removed after confirming deletion', async ({
+      page,
+      trackProgram,
+    }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
-      await createProgram(page, programName);
+      await createTrackedProgram(programsPage, trackProgram, programName);
 
-      await triggerDelete(page, programName, 'accept');
+      await triggerDelete(programsPage, programName, 'accept');
 
-      await expectProgramAbsent(page, programName);
+      await expectProgramAbsent(programsPage, programName);
     });
 
-    test('TC-002: program remains in the list when deletion is cancelled', async ({ page }) => {
+    test('TC-002: program remains in the list when deletion is cancelled', async ({
+      page,
+      trackProgram,
+    }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
-      await createProgram(page, programName);
+      await createTrackedProgram(programsPage, trackProgram, programName);
 
-      await triggerDelete(page, programName, 'dismiss');
+      await triggerDelete(programsPage, programName, 'dismiss');
 
-      await expect(deleteButton(page, programName)).toBeVisible();
-      await expect(programRow(page, programName)).toBeVisible();
+      await expect(programsPage.programDeleteButton(programName)).toBeVisible();
+      await expect(programsPage.programRow(programName)).toBeVisible();
     });
 
     test('TC-003: confirmation dialog displays the program name and cascade warning', async ({
       page,
+      trackProgram,
     }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
-      await createProgram(page, programName);
+      await createTrackedProgram(programsPage, trackProgram, programName);
 
-      const message = await triggerDelete(page, programName, 'dismiss');
+      const { type, message } = await triggerDelete(programsPage, programName, 'dismiss');
 
+      expect(type).toBe('confirm');
       expect(message).toContain(programName);
       expect(message).toContain(DELETE_CONFIRM_SNIPPET);
       expect(message.toLowerCase()).toContain('cannot be undone');
-      await expect(deleteButton(page, programName)).toBeVisible();
+      await expect(programsPage.programDeleteButton(programName)).toBeVisible();
     });
 
     test('TC-004: program is not deleted when confirmation dialog is dismissed', async ({
       page,
+      trackProgram,
     }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
-      await createProgram(page, programName);
+      await createTrackedProgram(programsPage, trackProgram, programName);
 
-      await triggerDelete(page, programName, 'dismiss');
+      await triggerDelete(programsPage, programName, 'dismiss');
 
-      await expect(deleteButton(page, programName)).toBeVisible();
+      await expect(programsPage.programDeleteButton(programName)).toBeVisible();
     });
 
     test('TC-006: deleting an already-deleted program refreshes the list', async ({
       browser,
+      trackProgram,
     }) => {
       const programName = uniqueName('Test Program');
       const contextA = await newAuthenticatedContext(browser);
       const contextB = await newAuthenticatedContext(browser);
       const pageA = await contextA.newPage();
       const pageB = await contextB.newPage();
+      const programsA = await openPrograms(pageA);
+      await createTrackedProgram(programsA, trackProgram, programName);
+      const programsB = await openPrograms(pageB);
 
+      await triggerDelete(programsB, programName, 'accept');
+      await expectProgramAbsent(programsB, programName);
+
+      await triggerDelete(programsA, programName, 'accept');
       await openPrograms(pageA);
-      await createProgram(pageA, programName);
-      await openPrograms(pageB);
-
-      await triggerDelete(pageB, programName, 'accept');
-      await expectProgramAbsent(pageB, programName);
-
-      await triggerDelete(pageA, programName, 'accept');
-      await openPrograms(pageA);
-      await expectProgramAbsent(pageA, programName);
+      await expectProgramAbsent(programsA, programName);
 
       await contextA.close();
       await contextB.close();
@@ -153,9 +128,11 @@ test.describe('Delete program with confirmation', () => {
 
     test('TC-007: confirming deletion once removes the program without duplicate delete errors', async ({
       page,
+      trackProgram,
     }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
-      await createProgram(page, programName);
+      await createTrackedProgram(programsPage, trackProgram, programName);
 
       let deleteResponses = 0;
       page.on('response', (response) => {
@@ -167,83 +144,95 @@ test.describe('Delete program with confirmation', () => {
         }
       });
 
-      await triggerDelete(page, programName, 'accept');
+      await triggerDelete(programsPage, programName, 'accept');
 
-      await expectProgramAbsent(page, programName);
+      await expectProgramAbsent(programsPage, programName);
       expect(deleteResponses).toBeLessThanOrEqual(1);
     });
 
-    test('TC-008: program with special characters in name can be deleted', async ({ page }) => {
+    test('TC-008: program with special characters in name can be deleted', async ({
+      page,
+      trackProgram,
+    }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Informatique & IA - Niveau 2');
-      await createProgram(page, programName);
+      await createTrackedProgram(programsPage, trackProgram, programName);
 
-      await triggerDelete(page, programName, 'accept');
+      await triggerDelete(programsPage, programName, 'accept');
 
-      await expectProgramAbsent(page, programName);
+      await expectProgramAbsent(programsPage, programName);
     });
 
-    test('TC-009: deleted program no longer appears in the program list', async ({ page }) => {
+    test('TC-009: deleted program no longer appears in the program list', async ({
+      page,
+      trackProgram,
+    }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
-      await createProgram(page, programName);
+      await createTrackedProgram(programsPage, trackProgram, programName);
 
-      await triggerDelete(page, programName, 'accept');
+      await triggerDelete(programsPage, programName, 'accept');
 
-      await expectProgramAbsent(page, programName);
+      await expectProgramAbsent(programsPage, programName);
     });
 
     test('TC-010: deleting a program with a very long name shows the name in confirmation', async ({
       page,
+      trackProgram,
     }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = nameOfLength(ASSUMED_PROGRAM_NAME_LENGTH);
-      await createProgram(page, programName);
+      await createTrackedProgram(programsPage, trackProgram, programName);
 
-      const message = await triggerDelete(page, programName, 'dismiss');
+      const { message } = await triggerDelete(programsPage, programName, 'dismiss');
 
       expect(message).toContain(programName);
-      await expect(deleteButton(page, programName)).toBeVisible();
+      await expect(programsPage.programDeleteButton(programName)).toBeVisible();
     });
 
-    test('TC-011: dismissing the confirmation dialog keeps the program', async ({ page }) => {
+    test('TC-011: dismissing the confirmation dialog keeps the program', async ({
+      page,
+      trackProgram,
+    }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
-      await createProgram(page, programName);
+      await createTrackedProgram(programsPage, trackProgram, programName);
 
-      await triggerDelete(page, programName, 'dismiss');
+      await triggerDelete(programsPage, programName, 'dismiss');
 
-      await expect(programRow(page, programName)).toBeVisible();
+      await expect(programsPage.programRow(programName)).toBeVisible();
     });
 
     test('TC-012: concurrent deletion by two users leaves the program removed', async ({
       browser,
+      trackProgram,
     }) => {
       const programName = uniqueName('Test Program');
       const contextA = await newAuthenticatedContext(browser);
       const contextB = await newAuthenticatedContext(browser);
       const pageA = await contextA.newPage();
       const pageB = await contextB.newPage();
+      const programsA = await openPrograms(pageA);
+      await createTrackedProgram(programsA, trackProgram, programName);
+      const programsB = await openPrograms(pageB);
 
-      await openPrograms(pageA);
-      await createProgram(pageA, programName);
-      await openPrograms(pageB);
-
-      const confirmDelete = async (target: Page) => {
-        const button = deleteButton(target, programName);
-        await button.scrollIntoViewIfNeeded();
+      const confirmDelete = async (target: ProgramsPage) => {
         const accepted = new Promise<void>((resolve) => {
-          target.once('dialog', async (dialog) => {
+          target.page.once('dialog', async (dialog) => {
             await dialog.accept();
             resolve();
           });
         });
-        await button.click();
+        await target.clickDelete(programName);
         await accepted;
       };
 
-      await Promise.all([confirmDelete(pageA), confirmDelete(pageB)]);
+      await Promise.all([confirmDelete(programsA), confirmDelete(programsB)]);
 
       await openPrograms(pageA);
       await openPrograms(pageB);
-      await expectProgramAbsent(pageA, programName);
-      await expectProgramAbsent(pageB, programName);
+      await expectProgramAbsent(programsA, programName);
+      await expectProgramAbsent(programsB, programName);
 
       await contextA.close();
       await contextB.close();
@@ -251,9 +240,11 @@ test.describe('Delete program with confirmation', () => {
 
     test('TC-013: rapid double-click on delete can open multiple confirmation dialogs', async ({
       page,
+      trackProgram,
     }) => {
+      const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
-      await createProgram(page, programName);
+      await createTrackedProgram(programsPage, trackProgram, programName);
 
       const messages: string[] = [];
       page.on('dialog', async (dialog) => {
@@ -261,18 +252,15 @@ test.describe('Delete program with confirmation', () => {
         await dialog.dismiss();
       });
 
-      const button = deleteButton(page, programName);
-      await button.scrollIntoViewIfNeeded();
-      await button.dblclick();
-      await page.waitForTimeout(500);
+      await programsPage.dblclickDelete(programName);
+      await expect.poll(() => messages.length, { timeout: 5_000 }).toBeGreaterThanOrEqual(1);
 
-      expect(messages.length).toBeGreaterThanOrEqual(1);
+      expect(messages[0]).toContain(programName);
       if (messages.length >= 2) {
-        expect(messages[0]).toContain(programName);
         expect(messages[1]).toContain(programName);
       }
 
-      await expect(deleteButton(page, programName)).toBeVisible();
+      await expect(programsPage.programDeleteButton(programName)).toBeVisible();
     });
   });
 });
