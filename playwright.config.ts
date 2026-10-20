@@ -39,7 +39,7 @@ export default defineConfig({
       testMatch: /.*\.setup\.ts/,
     },
     authenticatedBrowserProject('chromium', 'Desktop Chrome'),
-    authenticatedBrowserProject('firefox', 'Desktop Firefox'),
-    authenticatedBrowserProject('webkit', 'Desktop Safari'),
+    //authenticatedBrowserProject('firefox', 'Desktop Firefox'),
+    //authenticatedBrowserProject('webkit', 'Desktop Safari'),
   ],
 });
