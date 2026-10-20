@@ -1,13 +1,15 @@
-// @ts-check
-const path = require('path');
-const { defineConfig, devices } = require('@playwright/test');
+import path from 'path';
+import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
 
-require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const authStorageState = 'playwright/.auth/user.json';
 
-/** @param {string} name @param {string} device */
-function authenticatedBrowserProject(name, device) {
+function authenticatedBrowserProject(
+  name: string,
+  device: keyof typeof devices,
+) {
   return {
     name,
     use: {
@@ -19,15 +21,14 @@ function authenticatedBrowserProject(name, device) {
   };
 }
 
-/** @type {import('@playwright/test').PlaywrightTestConfig} */
-module.exports = defineConfig({
+export default defineConfig({
   testDir: './tests',
   testIgnore: '**/*.manual.spec.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  reporter: process.env.CI ? [['html'], ['github']] : 'list',
   use: {
     trace: 'on-first-retry',
     baseURL: process.env.DIDAXIS_URL,

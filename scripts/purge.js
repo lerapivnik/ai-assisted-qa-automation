@@ -13,7 +13,7 @@ if (!/^(all|[1-9]\d*)$/.test(limit)) {
 
 const child = spawn(
   'npx',
-  ['playwright', 'test', '--config=playwright.manual.config.js'],
+  ['playwright', 'test', '--config=playwright.manual.config.ts'],
   {
     stdio: 'inherit',
     env: { ...process.env, PURGE_LIMIT: limit },

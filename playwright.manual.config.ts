@@ -1,9 +1,7 @@
-// @ts-check
-const { defineConfig, devices } = require('@playwright/test');
-const baseConfig = require('./playwright.config');
+import { defineConfig, devices } from '@playwright/test';
+import baseConfig from './playwright.config';
 
-/** @type {import('@playwright/test').PlaywrightTestConfig} */
-module.exports = defineConfig({
+export default defineConfig({
   ...baseConfig,
   testIgnore: [],
   testMatch: '**/purge-programs.manual.spec.ts',
