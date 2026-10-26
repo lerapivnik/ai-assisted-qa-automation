@@ -124,7 +124,7 @@ export class ProgramsPage {
   }
 
   programNameInList(name: string): Locator {
-    return this.programRow(name).getByText(name, { exact: true });
+    return this.programParagraphs(name).nth(0);
   }
 
   programDescriptionInList(name: string, description: string): Locator {

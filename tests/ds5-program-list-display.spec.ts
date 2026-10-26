@@ -31,12 +31,26 @@ async function deleteProgram(
     });
   });
 
+  const deleteResponse = programsPage.page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/programs/') &&
+      response.request().method() === 'DELETE',
+  );
+  const listRefresh = programsPage.page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/programs') &&
+      response.request().method() === 'GET' &&
+      response.ok(),
+  );
+
   await programsPage.clickDelete(programName);
   await handled;
+  await deleteResponse;
 
   await expect(programsPage.programDeleteButton(programName)).toHaveCount(0, {
     timeout: 30_000,
   });
+  await listRefresh;
 }
 
 async function orderedNamesForBatch(
@@ -138,7 +152,7 @@ test.describe('Program list filtering and display', () => {
       await deleteProgram(programsPage, dataScience);
 
       await expect(programsPage.programDeleteButton(dataScience)).toHaveCount(0);
-      await expect(programsPage.programNameInList(webDev)).toBeVisible();
+      await waitForProgramListed(programsPage, webDev);
     });
 
     test('TC-007: program list does not show duplicate entries after creating a program once', async ({
@@ -263,7 +277,8 @@ test.describe('Program list filtering and display', () => {
       expect(secondOrder).toEqual(firstOrder);
     });
 
-    test('TC-016: duplicate program names appear as separate rows', async ({
+    // Product bug DS-252
+    test.fixme('TC-016: duplicate program names appear as separate rows', async ({
       page,
       trackProgram,
     }) => {

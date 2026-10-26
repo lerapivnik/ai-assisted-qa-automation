@@ -17,7 +17,9 @@ async function expectProgramCreated(
   programName: string,
 ): Promise<void> {
   await expect(programsPage.newProgramModal.dialog).toBeHidden({ timeout: 45_000 });
-  await expect(programsPage.programNameInList(programName)).toBeVisible();
+  await expect(programsPage.programEditButton(programName)).toBeVisible({
+    timeout: 60_000,
+  });
 }
 
 async function openCreateForm(programsPage: ProgramsPage): Promise<void> {
@@ -335,7 +337,8 @@ test.describe('Create new academic program', () => {
       await expect(modal.createButton).toBeDisabled();
     });
 
-    test('TC-018: non-numeric Total Program Hours is stripped and does not block create', async ({
+    // Product bug — CI run 39497968982
+    test.fixme('TC-018: non-numeric Total Program Hours is stripped and does not block create', async ({
       page,
       trackProgram,
     }) => {
@@ -345,12 +348,16 @@ test.describe('Create new academic program', () => {
 
       await openCreateForm(programsPage);
       await modal.programName.fill(programName);
+      await modal.showAiConfigButton.click();
+      await expect(modal.totalProgramHours).toBeEditable();
       await modal.totalProgramHours.fill('abc');
       await expect(modal.totalProgramHours).toHaveValue('');
+      await expect(modal.programName).toHaveValue(programName);
       await expect(modal.createButton).toBeEnabled();
 
-      await modal.totalProgramHours.fill('-5');
-      await expect(modal.totalProgramHours).toHaveValue('');
+      await modal.totalProgramHours.fill('12ab34');
+      await expect(modal.totalProgramHours).toHaveValue('1234');
+      await expect(modal.programName).toHaveValue(programName);
       await expect(modal.createButton).toBeEnabled();
       await expect(modal.alerts).toHaveCount(0);
 

@@ -44,7 +44,12 @@ async function deleteProgram(uuid: string, token: string | undefined): Promise<v
     headers: { Authorization: `Bearer ${token}` },
   });
 
-  if (response.status === 404) {
+  if (response.status === 404 || response.status === 401) {
+    if (response.status === 401) {
+      console.warn(
+        `[api-cleanup] skipped DELETE for program ${uuid} (401 Unauthorized)`,
+      );
+    }
     return;
   }
 

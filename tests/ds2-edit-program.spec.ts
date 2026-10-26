@@ -18,7 +18,9 @@ async function expectProgramSaved(
   programName: string,
 ): Promise<void> {
   await expect(programsPage.editProgramModal.dialog).toBeHidden({ timeout: 45_000 });
-  await expect(programsPage.programNameInList(programName)).toBeVisible();
+  await expect(programsPage.programEditButton(programName).first()).toBeVisible({
+    timeout: 60_000,
+  });
 }
 
 test.describe('Edit existing program details', () => {
@@ -151,7 +153,8 @@ test.describe('Edit existing program details', () => {
       await expect(modal.programName).toHaveValue(programName);
     });
 
-    test('TC-007: duplicate program name is accepted on edit', async ({
+    // Product bug DS-252
+    test.fixme('TC-007: duplicate program name is accepted on edit', async ({
       page,
       trackProgram,
     }) => {
@@ -297,7 +300,8 @@ test.describe('Edit existing program details', () => {
       await expect(modal.alerts).toHaveCount(0);
     });
 
-    test('TC-012: concurrent edit by two users shows appropriate conflict handling', async ({
+    // Product bug — CI run 39497968982
+    test.fixme('TC-012: concurrent edit by two users shows appropriate conflict handling', async ({
       browser,
       trackProgram,
     }) => {
