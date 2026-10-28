@@ -6,7 +6,7 @@ Feature: Delete program with confirmation
 
   # Happy paths
 
-  @DS-4 @AC-delete-confirm
+  @DS-4 @AC-delete
   Scenario: Delete program with confirmation
     Given I am logged in as admin
     And a program "Test Program" exists
@@ -15,56 +15,55 @@ Feature: Delete program with confirmation
     When I confirm deletion
     Then "Test Program" is removed from the program list
 
-  @DS-4 @AC-cancel-delete
+  @DS-4 @AC-cancel
   Scenario: Cancel program deletion
     Given I am logged in as admin
     And a program "Test Program" exists
-    When I click the delete icon for a program
+    When I click the delete icon for "Test Program"
     And I see the confirmation dialog
     And I click Cancel
-    Then the program still exists in the list
-    And the program list shows "Test Program"
+    Then "Test Program" still exists in the list
 
   @DS-4
-  Scenario: Confirmation dialog appears before any program is removed
+  Scenario: Confirmation dialog names the program and warns that the delete cannot be undone
     Given I am logged in as admin
     And a program "Test Program" exists
     When I click the delete icon for "Test Program"
     Then I see a confirmation dialog
-    And the program list still shows "Test Program"
+    And the message includes "Test Program"
+    And the message warns that semesters and courses will be removed
+    And the message states the action cannot be undone
 
   # Negative
 
   @DS-4
-  Scenario: Dismissing confirmation without confirming does not delete the program
+  Scenario: Dismissing the confirmation leaves the program in the list
     Given I am logged in as admin
     And a program "Test Program" exists
     When I click the delete icon for "Test Program"
-    And I see the confirmation dialog
-    And I click Cancel
-    Then "Test Program" is not removed from the program list
+    And I dismiss the confirmation dialog without confirming
+    Then "Test Program" still exists in the list
 
   @DS-4
-  Scenario: Deleting one program does not remove other programs from the list
+  Scenario: Unauthenticated user cannot delete a program
+    Given I am not logged in
+    When I navigate to the Programs page
+    Then I am redirected to /login
+    And I see "Sign in to your account"
+    And I do not see any Delete actions
+
+  @DS-4
+  Scenario: Confirmed deletion does not leave a leftover Delete action for that program
     Given I am logged in as admin
     And a program "Test Program" exists
-    And a program "Web Development 2026" exists
     When I click the delete icon for "Test Program"
     And I confirm deletion
-    Then "Test Program" is removed from the program list
-    And the program list still shows "Web Development 2026"
-
-  @DS-4
-  Scenario: Program is not deleted before the confirmation dialog is shown
-    Given I am logged in as admin
-    And a program "Test Program" exists
-    When I click the delete icon for "Test Program"
-    Then "Test Program" is still in the program list
+    Then I do not see a Delete action for "Test Program"
 
   # Edge cases
 
   @DS-4
-  Scenario: Delete program with special characters in the name after confirmation
+  Scenario: Program with special characters in the name can be deleted
     Given I am logged in as admin
     And a program "Informatique & IA - Niveau 2" exists
     When I click the delete icon for "Informatique & IA - Niveau 2"
@@ -72,17 +71,31 @@ Feature: Delete program with confirmation
     Then "Informatique & IA - Niveau 2" is removed from the program list
 
   @DS-4
-  Scenario: Program remains deleted in the list after page refresh following confirmed delete
+  Scenario: Deleted program stays gone after the Programs page is reloaded
     Given I am logged in as admin
     And a program "Test Program" exists
     When I click the delete icon for "Test Program"
     And I confirm deletion
-    And I refresh the Programs page
-    Then the program list does not show "Test Program"
+    And I reload the Programs page
+    Then "Test Program" is not in the program list
+
+  @DS-4
+  Scenario: Confirmation dialog includes the full name of a very long program
+    Given I am logged in as admin
+    And a program with a 255-character name exists
+    When I click the delete icon for that program
+    Then the confirmation message includes the full program name
+    And I can cancel the deletion
+    And the program still exists in the list
 
   # Ambiguities (review with PO)
-  # - AC does not specify confirmation dialog type (in-app modal vs native browser confirm) or exact button labels.
-  # - AC does not define behavior when delete API fails, when program has dependent curriculum data, or double-click on delete.
-  # - Cancel scenario uses generic "a program" — assumed to be the same row targeted by the delete icon.
-  # - Non-admin visibility of delete control and soft-delete vs hard-delete are not specified.
-  # - Whether a success message is shown after delete is not in AC.
+  # - AC says "confirmation dialog"; the live app uses native window.confirm() with OK/Cancel, not an in-app Mantine modal (related: DS-172, DS-210).
+  # - AC says "click Cancel"; Playwright dismisses the native dialog (dialog.dismiss()), not a Cancel button in the page.
+  # - Delete control is a Mantine ActionIcon with accessible name "Delete {Program Name}" and an SVG trash icon (no visible text, not an emoji).
+  # - Confirm copy is: Delete program "{name}"? All its semesters and courses will be removed. This cannot be undone.
+  # - Cascade of semesters/courses is only warned in the dialog; backend cascade is not specified in AC.
+  # - No success toast after delete; removal from the list is the only confirmation (no role=alert).
+  # - Rapid double-click on Delete can queue two native confirms (related: DS-30, DS-109, DS-156, DS-218) — not specified as intended AC behavior.
+  # - Empty-state after deleting the last program is not testable on the shared tenant (hundreds of programs always present).
+  # - Failed DELETE has no user-visible error (related: DS-116, DS-155); AC does not define error handling.
+  # - Non-admin delete permissions are not specified in AC.

@@ -5,6 +5,7 @@ export class LoginPage {
   readonly email: Locator;
   readonly password: Locator;
   readonly signInButton: Locator;
+  readonly signInHeading: Locator;
   readonly dashboardHeading: Locator;
 
   constructor(page: Page) {
@@ -12,6 +13,9 @@ export class LoginPage {
     this.email = page.getByLabel('Email');
     this.password = page.getByLabel('Password');
     this.signInButton = page.getByRole('button', { name: 'Sign In' });
+    this.signInHeading = page.getByRole('paragraph').filter({
+      hasText: 'Sign in to your account',
+    });
     this.dashboardHeading = page.getByRole('heading', { name: 'Dashboard' });
   }
 

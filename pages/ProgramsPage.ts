@@ -10,6 +10,7 @@ export class ProgramsPage {
   readonly rows: Locator;
   readonly programColumnHeader: Locator;
   readonly alerts: Locator;
+  readonly deleteActions: Locator;
   readonly failureMessage: Locator;
   readonly searchPlaceholder: Locator;
   readonly searchTextbox: Locator;
@@ -25,6 +26,7 @@ export class ProgramsPage {
     this.rows = page.getByRole('row');
     this.programColumnHeader = page.getByRole('columnheader', { name: 'Program' });
     this.alerts = page.getByRole('alert');
+    this.deleteActions = page.getByRole('button', { name: /^Delete / });
     this.failureMessage = page.getByText(/conflict|already|error|failed/i);
     this.searchPlaceholder = page.getByPlaceholder(/search/i);
     this.searchTextbox = page.getByRole('textbox', { name: /search/i });
@@ -83,6 +85,32 @@ export class ProgramsPage {
     throw new Error('Tab navigation did not focus + New Program');
   }
 
+  /**
+   * Tab from the matching Edit control until {@link programDeleteButton} receives focus.
+   * Starts on the same row so the crowded shared-tenant list is not walked from the top.
+   */
+  async tabToDeleteButton(name: string, maxPresses = 10): Promise<void> {
+    const deleteButton = this.programDeleteButton(name);
+    await deleteButton.scrollIntoViewIfNeeded();
+    await this.programEditButton(name).focus();
+    for (let i = 0; i < maxPresses; i++) {
+      const focused = await deleteButton.evaluate(
+        (el) => el === document.activeElement,
+      );
+      if (focused) {
+        return;
+      }
+      await this.page.keyboard.press('Tab');
+    }
+    const focusedAfterLastTab = await deleteButton.evaluate(
+      (el) => el === document.activeElement,
+    );
+    if (focusedAfterLastTab) {
+      return;
+    }
+    throw new Error(`Tab navigation did not focus Delete ${name}`);
+  }
+
   async createProgram(name: string, description?: string): Promise<void> {
     await this.newProgramModal.submit(name, description);
   }
@@ -105,6 +133,30 @@ export class ProgramsPage {
 
   programDeleteButton(name: string): Locator {
     return this.page.getByRole('button', { name: `Delete ${name}`, exact: true });
+  }
+
+  /**
+   * CSS selector for axe `.include()` on the Delete ActionIcon.
+   * Axe only accepts selectors, not Playwright locators. Derived from the
+   * role-based {@link programDeleteButton} element.
+   */
+  async deleteButtonA11ySelector(name: string): Promise<string> {
+    return this.programDeleteButton(name).evaluate((el, programName) => {
+      if (el.id) {
+        return `#${CSS.escape(el.id)}`;
+      }
+      const label = el.getAttribute('aria-label');
+      if (label && el.tagName === 'BUTTON') {
+        return `button[aria-label="${CSS.escape(label)}"]`;
+      }
+      const role = el.getAttribute('role');
+      if (label && role) {
+        return `[role="${role}"][aria-label="${CSS.escape(label)}"]`;
+      }
+      throw new Error(
+        `Delete control for "${programName}" has no id or aria-label for axe include`,
+      );
+    }, name);
   }
 
   programRow(name: string): Locator {

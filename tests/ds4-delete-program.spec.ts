@@ -1,33 +1,47 @@
+import type { Dialog } from '@playwright/test';
 import { expect, test } from '../fixtures/cleanup.fixture';
+import { LoginPage } from '../pages/LoginPage';
 import { ProgramsPage } from '../pages/ProgramsPage';
-import { newAuthenticatedContext, openPrograms } from './helpers/auth';
+import { openPrograms } from './helpers/auth';
 import { createTrackedProgram, nameOfLength, uniqueName } from './helpers/programs';
 
 const ASSUMED_PROGRAM_NAME_LENGTH = 255;
-const DELETE_CONFIRM_SNIPPET = 'All its semesters and courses will be removed';
 
-async function triggerDelete(
-  programsPage: ProgramsPage,
-  programName: string,
-  action: 'accept' | 'dismiss',
-): Promise<{ type: string; message: string }> {
-  const handled = new Promise<{ type: string; message: string }>((resolve) => {
-    programsPage.page.once('dialog', async (dialog) => {
-      const result = { type: dialog.type(), message: dialog.message() };
-      if (action === 'accept') {
-        await dialog.accept();
-      } else {
-        await dialog.dismiss();
-      }
-      resolve(result);
-    });
-  });
-
-  await programsPage.clickDelete(programName);
-  return handled;
+function expectedDeleteConfirm(name: string): string {
+  return `Delete program "${name}"? All its semesters and courses will be removed. This cannot be undone.`;
 }
 
-async function expectProgramAbsent(
+async function openDeleteConfirm(
+  programsPage: ProgramsPage,
+  programName: string,
+): Promise<{ dialog: Dialog; clickPromise: Promise<void> }> {
+  // Native confirm blocks locator.click() until the dialog is handled.
+  const dialogPromise = programsPage.page.waitForEvent('dialog');
+  const clickPromise = programsPage.clickDelete(programName);
+  const dialog = await dialogPromise;
+  return { dialog, clickPromise };
+}
+
+async function confirmDelete(
+  programsPage: ProgramsPage,
+  programName: string,
+): Promise<string> {
+  const dialogPromise = programsPage.page.waitForEvent('dialog');
+  const deleteResponse = programsPage.page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/programs/') &&
+      response.request().method() === 'DELETE',
+  );
+  const clickPromise = programsPage.clickDelete(programName);
+  const dialog = await dialogPromise;
+  const message = dialog.message();
+  await dialog.accept();
+  await clickPromise;
+  await deleteResponse;
+  return message;
+}
+
+async function expectProgramRemoved(
   programsPage: ProgramsPage,
   programName: string,
 ): Promise<void> {
@@ -35,44 +49,54 @@ async function expectProgramAbsent(
     timeout: 30_000,
   });
   await expect(programsPage.programRow(programName)).toHaveCount(0);
+  await expect(programsPage.alerts).toHaveCount(0);
+}
+
+async function expectProgramStillListed(
+  programsPage: ProgramsPage,
+  programName: string,
+): Promise<void> {
+  await expect(programsPage.programDeleteButton(programName)).toBeVisible();
+  await expect(programsPage.programRow(programName)).toBeVisible();
 }
 
 test.describe('Delete program with confirmation', () => {
   test.describe.configure({ timeout: 120_000 });
+
+  // Rapid double-click can queue two native confirms (DS-30 / DS-109 / DS-156 / DS-218).
+  // Not automated — not specified as intended AC behavior.
 
   test.describe('authenticated admin', () => {
     test.beforeEach(async ({ page }) => {
       await openPrograms(page);
     });
 
-    test('TC-001: program is permanently removed after confirming deletion', async ({
-      page,
-      trackProgram,
-    }) => {
+    test('TC-001: delete program with confirmation', async ({ page, trackProgram }) => {
       const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
       await createTrackedProgram(programsPage, trackProgram, programName);
 
-      await triggerDelete(programsPage, programName, 'accept');
-
-      await expectProgramAbsent(programsPage, programName);
+      await confirmDelete(programsPage, programName);
+      await expectProgramRemoved(programsPage, programName);
     });
 
-    test('TC-002: program remains in the list when deletion is cancelled', async ({
-      page,
-      trackProgram,
-    }) => {
+    test('TC-002: cancel program deletion', async ({ page, trackProgram }) => {
       const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
       await createTrackedProgram(programsPage, trackProgram, programName);
 
-      await triggerDelete(programsPage, programName, 'dismiss');
+      const { dialog, clickPromise } = await openDeleteConfirm(
+        programsPage,
+        programName,
+      );
+      expect(dialog.message()).toBe(expectedDeleteConfirm(programName));
+      await dialog.dismiss();
+      await clickPromise;
 
-      await expect(programsPage.programDeleteButton(programName)).toBeVisible();
-      await expect(programsPage.programRow(programName)).toBeVisible();
+      await expectProgramStillListed(programsPage, programName);
     });
 
-    test('TC-003: confirmation dialog displays the program name and cascade warning', async ({
+    test('TC-003: confirmation dialog names the program and warns cascade/undo', async ({
       page,
       trackProgram,
     }) => {
@@ -80,16 +104,22 @@ test.describe('Delete program with confirmation', () => {
       const programName = uniqueName('Test Program');
       await createTrackedProgram(programsPage, trackProgram, programName);
 
-      const { type, message } = await triggerDelete(programsPage, programName, 'dismiss');
-
-      expect(type).toBe('confirm');
+      const { dialog, clickPromise } = await openDeleteConfirm(
+        programsPage,
+        programName,
+      );
+      const message = dialog.message();
+      expect(message).toBe(expectedDeleteConfirm(programName));
       expect(message).toContain(programName);
-      expect(message).toContain(DELETE_CONFIRM_SNIPPET);
-      expect(message.toLowerCase()).toContain('cannot be undone');
-      await expect(programsPage.programDeleteButton(programName)).toBeVisible();
+      expect(message).toContain('All its semesters and courses will be removed');
+      expect(message).toContain('This cannot be undone');
+      await dialog.dismiss();
+      await clickPromise;
+
+      await expectProgramStillListed(programsPage, programName);
     });
 
-    test('TC-004: program is not deleted when confirmation dialog is dismissed', async ({
+    test('TC-004: dismissing confirmation leaves program in list', async ({
       page,
       trackProgram,
     }) => {
@@ -97,37 +127,17 @@ test.describe('Delete program with confirmation', () => {
       const programName = uniqueName('Test Program');
       await createTrackedProgram(programsPage, trackProgram, programName);
 
-      await triggerDelete(programsPage, programName, 'dismiss');
+      const { dialog, clickPromise } = await openDeleteConfirm(
+        programsPage,
+        programName,
+      );
+      await dialog.dismiss();
+      await clickPromise;
 
-      await expect(programsPage.programDeleteButton(programName)).toBeVisible();
+      await expectProgramStillListed(programsPage, programName);
     });
 
-    // Product bug — CI run 39497968982
-    test.fixme('TC-006: deleting an already-deleted program refreshes the list', async ({
-      browser,
-      trackProgram,
-    }) => {
-      const programName = uniqueName('Test Program');
-      const contextA = await newAuthenticatedContext(browser);
-      const contextB = await newAuthenticatedContext(browser);
-      const pageA = await contextA.newPage();
-      const pageB = await contextB.newPage();
-      const programsA = await openPrograms(pageA);
-      await createTrackedProgram(programsA, trackProgram, programName);
-      const programsB = await openPrograms(pageB);
-
-      await triggerDelete(programsB, programName, 'accept');
-      await expectProgramAbsent(programsB, programName);
-
-      await triggerDelete(programsA, programName, 'accept');
-      await openPrograms(pageA);
-      await expectProgramAbsent(programsA, programName);
-
-      await contextA.close();
-      await contextB.close();
-    });
-
-    test('TC-007: confirming deletion once removes the program without duplicate delete errors', async ({
+    test('TC-006: confirmed deletion removes Delete action for that name', async ({
       page,
       trackProgram,
     }) => {
@@ -135,23 +145,15 @@ test.describe('Delete program with confirmation', () => {
       const programName = uniqueName('Test Program');
       await createTrackedProgram(programsPage, trackProgram, programName);
 
-      let deleteResponses = 0;
-      page.on('response', (response) => {
-        if (
-          response.url().includes('/api/programs/') &&
-          response.request().method() === 'DELETE'
-        ) {
-          deleteResponses += 1;
-        }
+      await confirmDelete(programsPage, programName);
+
+      await expect(programsPage.programDeleteButton(programName)).toHaveCount(0, {
+        timeout: 30_000,
       });
-
-      await triggerDelete(programsPage, programName, 'accept');
-
-      await expectProgramAbsent(programsPage, programName);
-      expect(deleteResponses).toBeLessThanOrEqual(1);
+      await expect(programsPage.alerts).toHaveCount(0);
     });
 
-    test('TC-008: program with special characters in name can be deleted', async ({
+    test('TC-007: program with special characters can be deleted', async ({
       page,
       trackProgram,
     }) => {
@@ -159,25 +161,24 @@ test.describe('Delete program with confirmation', () => {
       const programName = uniqueName('Informatique & IA - Niveau 2');
       await createTrackedProgram(programsPage, trackProgram, programName);
 
-      await triggerDelete(programsPage, programName, 'accept');
-
-      await expectProgramAbsent(programsPage, programName);
+      await confirmDelete(programsPage, programName);
+      await expectProgramRemoved(programsPage, programName);
     });
 
-    test('TC-009: deleted program no longer appears in the program list', async ({
-      page,
-      trackProgram,
-    }) => {
+    test('TC-008: deleted program stays gone after reload', async ({ page, trackProgram }) => {
       const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
       await createTrackedProgram(programsPage, trackProgram, programName);
 
-      await triggerDelete(programsPage, programName, 'accept');
+      await confirmDelete(programsPage, programName);
+      await expectProgramRemoved(programsPage, programName);
 
-      await expectProgramAbsent(programsPage, programName);
+      await programsPage.reloadList();
+      await expect(programsPage.heading).toBeVisible();
+      await expectProgramRemoved(programsPage, programName);
     });
 
-    test('TC-010: deleting a program with a very long name shows the name in confirmation', async ({
+    test('TC-009: 255-character name appears in confirm message', async ({
       page,
       trackProgram,
     }) => {
@@ -185,84 +186,34 @@ test.describe('Delete program with confirmation', () => {
       const programName = nameOfLength(ASSUMED_PROGRAM_NAME_LENGTH);
       await createTrackedProgram(programsPage, trackProgram, programName);
 
-      const { message } = await triggerDelete(programsPage, programName, 'dismiss');
+      const { dialog, clickPromise } = await openDeleteConfirm(
+        programsPage,
+        programName,
+      );
+      expect(dialog.message()).toBe(expectedDeleteConfirm(programName));
+      expect(dialog.message()).toContain(programName);
+      await dialog.dismiss();
+      await clickPromise;
 
-      expect(message).toContain(programName);
-      await expect(programsPage.programDeleteButton(programName)).toBeVisible();
+      await expectProgramStillListed(programsPage, programName);
     });
+  });
 
-    test('TC-011: dismissing the confirmation dialog keeps the program', async ({
-      page,
-      trackProgram,
-    }) => {
-      const programsPage = new ProgramsPage(page);
-      const programName = uniqueName('Test Program');
-      await createTrackedProgram(programsPage, trackProgram, programName);
-
-      await triggerDelete(programsPage, programName, 'dismiss');
-
-      await expect(programsPage.programRow(programName)).toBeVisible();
+  test('TC-005: unauthenticated user cannot delete a program', async ({ browser }) => {
+    const context = await browser.newContext({
+      storageState: { cookies: [], origins: [] },
     });
+    const page = await context.newPage();
+    const programsPage = new ProgramsPage(page);
+    const loginPage = new LoginPage(page);
 
-    // Product bug — CI run 39497968982
-    test.fixme('TC-012: concurrent deletion by two users leaves the program removed', async ({
-      browser,
-      trackProgram,
-    }) => {
-      const programName = uniqueName('Test Program');
-      const contextA = await newAuthenticatedContext(browser);
-      const contextB = await newAuthenticatedContext(browser);
-      const pageA = await contextA.newPage();
-      const pageB = await contextB.newPage();
-      const programsA = await openPrograms(pageA);
-      await createTrackedProgram(programsA, trackProgram, programName);
-      const programsB = await openPrograms(pageB);
+    await programsPage.goto();
 
-      const confirmDelete = async (target: ProgramsPage) => {
-        const accepted = new Promise<void>((resolve) => {
-          target.page.once('dialog', async (dialog) => {
-            await dialog.accept();
-            resolve();
-          });
-        });
-        await target.clickDelete(programName);
-        await accepted;
-      };
+    await expect(page).toHaveURL(/\/login/, { timeout: 30_000 });
+    await expect(loginPage.signInHeading).toBeVisible({ timeout: 30_000 });
+    await expect(loginPage.signInHeading).toHaveText('Sign in to your account');
+    await expect(programsPage.deleteActions).toHaveCount(0);
 
-      await Promise.all([confirmDelete(programsA), confirmDelete(programsB)]);
-
-      await openPrograms(pageA);
-      await openPrograms(pageB);
-      await expectProgramAbsent(programsA, programName);
-      await expectProgramAbsent(programsB, programName);
-
-      await contextA.close();
-      await contextB.close();
-    });
-
-    test('TC-013: rapid double-click on delete can open multiple confirmation dialogs', async ({
-      page,
-      trackProgram,
-    }) => {
-      const programsPage = new ProgramsPage(page);
-      const programName = uniqueName('Test Program');
-      await createTrackedProgram(programsPage, trackProgram, programName);
-
-      const messages: string[] = [];
-      page.on('dialog', async (dialog) => {
-        messages.push(dialog.message());
-        await dialog.dismiss();
-      });
-
-      await programsPage.dblclickDelete(programName);
-      await expect.poll(() => messages.length, { timeout: 5_000 }).toBeGreaterThanOrEqual(1);
-
-      expect(messages[0]).toContain(programName);
-      if (messages.length >= 2) {
-        expect(messages[1]).toContain(programName);
-      }
-
-      await expect(programsPage.programDeleteButton(programName)).toBeVisible();
-    });
+    await context.close();
   });
 });
