@@ -22,12 +22,40 @@ You coordinate the QA subagents. Do the analysis yourself (apply the jira-ticket
 
 Generate reviewable test scenarios from a Jira ticket. Gherkin output is a human-readable checkpoint — QA reviews it before any Playwright code is written.
 
-**Before finalizing the plan:** crawl the real app (browser MCP / Playwright against the target environment) to confirm locators, navigation, and actual behaviour match the ticket.
+**Before finalizing the plan:** crawl the real app (browser MCP / Playwright against the target environment) to confirm locators, navigation, and actual behaviour match the ticket. Programs API edge scenarios name the status and the UI outcome only. The visible error and empty-state sentence is read from the live page when the spec is written, not invented in the plan.
+
+## Playwright runner
+
+`playwright.config.ts` stays on the contract in `.cursor/rules/playwright-conventions.mdc`. Do not hand that file to a subagent.
+
+- `fullyParallel: true`
+- `retries: process.env.CI ? 2 : 0` — never above 2
+- no `workers` key, and never `workers: 1`
+- `use.baseURL` from `process.env.DIDAXIS_URL`, `use.trace: 'on-first-retry'`
+- `use.locale` and `use.timezoneId` pinned to the values named in that rule. If the rule does not name them, ask the user before writing either value.
+- `setup` project plus authenticated projects with `storageState: 'playwright/.auth/user.json'` and `dependencies: ['setup']`
+
+When a plan asserts a relative timestamp, **test-writer** calls `page.clock.install({ time })` in the spec before navigation.
+
+## Accessibility
+
+Programs-page coverage is part of the plan and the spec: an axe scan (`new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()` asserted with `expect(results.violations).toEqual([])`) and a keyboard test axe cannot do (tab to the primary control, `toBeFocused()`, Enter, dialog open). Existing POMs only; no inline locators; one tag per test. Scope with `.include()` / `.exclude()` only if a third-party widget is noisy, and comment why.
+
+If the scan finds real violations, report them and stop. Never ask **test-writer** to call `.disableRules()` or otherwise make the job green. A human-confirmed defect goes to **bug-reporter**.
 
 ## Loop guard
 
 - At most **3 delegations** per task.
 - Never re-run the **same failing spec** more than **twice** — then stop and ask.
+
+## Guardrails
+
+- A human approves every merge and every filed bug.
+- No subagent edits application source.
+- Blast radius:
+  - **test-writer:** writes under `tests/` only (plus test-support in `pages/`, `tests/helpers/`, `fixtures/` when the spec needs it); never application source.
+  - **triage:** read-only CI diagnosis; no repo edits, no merge, no auto-fix.
+  - **bug-reporter:** files and links Jira only; no repo edits.
 
 ## Approval
 

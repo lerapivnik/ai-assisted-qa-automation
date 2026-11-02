@@ -29,6 +29,8 @@ intent; POMs handle mechanics.
    Methods perform actions; they do not assert. Never use
    `waitForTimeout` inside POMs — callers wait with web-first
    `expect(locator).toBeVisible()` / `.toBeEnabled()` / `.toHaveText()`.
+   `page.route` fulfill for API edge cases stays in the spec. Page
+   objects do not stub the network.
 
 5. **No assertions inside Page Objects.** All `expect(...)` calls
    live in the test files, never in `pages/`. Prefer auto-retrying
@@ -38,6 +40,16 @@ intent; POMs handle mechanics.
    `ProgramsPage` holds a `NewProgramModal` instance.
 
 7. Import POMs at the top of each spec; instantiate with `new XxxPage(page)`.
+
+   A spec that asserts a relative timestamp calls `page.clock.install({ time })` in the spec before navigation. Page objects do not install or pause the clock.
+
+8. Accessibility specs use the same POMs. The programs page is reached with
+   `ProgramsPage` (and `NewProgramModal` for the dialog). Role-based locators
+   only. Methods such as tab-to-primary-control perform the action; `expect`
+   (`toBeFocused()`, dialog visible, `expect(results.violations).toEqual([])`)
+   stays in the spec. Do not put an axe scan inside a page object. Add a
+   selector for `.include()` / `.exclude()` only when a third-party widget is
+   noisy, and the spec comments why.
 
 ## Output
 Page Object files in `pages/`. Tests in `tests/` that import them.

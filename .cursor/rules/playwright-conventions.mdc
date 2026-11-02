@@ -1,23 +1,317 @@
 ---
-description: How this project writes Playwright tests — auth, POM, locators, cleanup, data.
-globs: tests/**          # auto-attaches whenever a test file is edited
+description: how this project writes Playwright tests — runner stability, auth, POM, locators, frozen clocks, data, cleanup, programs API edge cases, and programs-page accessibility
+globs: tests/**,pages/**,playwright.config.ts
 alwaysApply: false
 ---
 
-# Playwright Conventions
+# Playwright conventions
 
-## Auth
+## 1. Locators
 
-Stored session by default; UI login only for login-page tests.
+Use `getByRole`, then `getByLabel` or `getByPlaceholder`, then `getByText`, then `getByTestId` with a comment on why a higher option failed; when several elements match, narrow with `.filter({ hasText })`.
 
-## Page Objects (from pom-conventions)
+✅ Good — `pages/ProgramsPage.ts`, `pages/LoginPage.ts`:
 
-One POM per page/component; locators in the constructor; no assertions in POMs; tests describe intent.
+```typescript
+this.newProgramButton = page.getByRole('button', { name: '+ New Program' });
+this.email = page.getByLabel('Email');
+this.signInHeading = page.getByRole('paragraph').filter({
+  hasText: 'Sign in to your account',
+});
+```
 
-## Locators
+❌ Bad:
 
-Role/label-based; never CSS selectors; never brittle text.
+```typescript
+page.locator('button.mantine-Button-root').first();
+page.locator('//button[contains(text(), "New Program")]');
+```
 
-## Data & cleanup (from api-cleanup)
+Why: CSS, XPath, and `.first()` bind the test to markup order, so a restyle or a second matching control clicks the wrong element.
 
-Unique data with `Date.now()`; every test cleans up after itself.
+No `getByTestId` call exists in this repo. Use it only as the last resort, with a comment naming which role, label, and text failed.
+
+## 2. Waiting
+
+Wait with web-first `expect(locator).toBeVisible()`, `.toBeEnabled()`, or `.toHaveText()`; a known network boundary may use `waitForResponse` for that method and path.
+
+✅ Good — `tests/programs.a11y.spec.ts`, `pages/ProgramsPage.ts`:
+
+```typescript
+await expect(programsPage.heading).toBeVisible({ timeout: 30_000 });
+
+const programsLoaded = this.page.waitForResponse(
+  (response) =>
+    response.url().includes('/api/programs') &&
+    response.request().method() === 'GET' &&
+    response.ok(),
+);
+await this.page.goto('/programs');
+await programsLoaded;
+```
+
+❌ Bad:
+
+```typescript
+await page.waitForTimeout(3000);
+await page.waitForLoadState('networkidle');
+```
+
+Why: A fixed sleep and `networkidle` pass or fail with machine speed, and they never name the control or response the test is actually waiting for.
+
+## 3. Page Objects
+
+One class per page or distinct component under `pages/`; locators are `readonly` fields, methods such as `goto`, `clickX`, `fillY`, and `submit` perform actions only, every `expect` stays in the spec, and a page that contains a component holds that object (`new XxxPage(page)`).
+
+✅ Good — `pages/ProgramsPage.ts`, `pages/NewProgramModal.ts`:
+
+```typescript
+this.newProgramModal = new NewProgramModal(page);
+
+async openNewProgramForm(): Promise<void> {
+  await this.newProgramButton.click();
+}
+```
+
+❌ Bad:
+
+```typescript
+async openNewProgramForm(): Promise<void> {
+  await this.page.locator('#new-program').click();
+  await expect(this.page.getByRole('dialog')).toBeVisible();
+}
+```
+
+Why: An assertion or a raw selector inside the page object hides a failed open behind a helper and duplicates the same locator across specs.
+
+`page.route` stays in the spec. Page objects do not stub the network or install the clock.
+
+## 4. Auth
+
+Stored session is the default: the `setup` project runs `tests/auth.setup.ts` once and writes cookies and localStorage to `playwright/.auth/user.json`; login-page tests start empty; API login (POST credentials, then inject the token) is only for bulk setup, one-off scripts, or a stale storage state.
+
+✅ Good — `tests/auth.setup.ts`, `tests/ds4-delete-program.spec.ts`:
+
+```typescript
+await page.context().storageState({ path: authStorageStatePath });
+
+const context = await browser.newContext({
+  storageState: { cookies: [], origins: [] },
+});
+```
+
+Authenticated projects keep `storageState: 'playwright/.auth/user.json'` and `dependencies: ['setup']`. A whole file that must start logged out can use `test.use({ storageState: { cookies: [], origins: [] } })`.
+
+❌ Bad:
+
+```typescript
+test.beforeEach(async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(process.env.DIDAXIS_EMAIL!);
+  await page.getByRole('button', { name: 'Sign In' }).click();
+});
+```
+
+Why: A UI login before every feature test turns a slow Sign In into a product failure and multiplies session flake across the suite.
+
+## 5. Test data
+
+Tests that create a program import `test` from `fixtures/cleanup.fixture.ts`, call `trackProgram(uuid)` as soon as the id is known, and name records with `uniqueName`; the fixture deletes with `DELETE /api/programs/<uuid>` using `process.env.DIDAXIS_API_TOKEN`.
+
+✅ Good — `tests/helpers/programs.ts`:
+
+```typescript
+export function uniqueName(base: string): string {
+  return `${base} ${Date.now()}`;
+}
+
+const createResponse = programsPage.page.waitForResponse(isProgramCreateResponse);
+await programsPage.createProgram(name, description);
+await trackCreateFromResponse(await createResponse, trackProgram);
+```
+
+❌ Bad:
+
+```typescript
+test.afterAll(async () => {
+  await fetch('https://test.didaxis.studio/api/programs/11111111-1111-1111-1111-111111111111', {
+    method: 'DELETE',
+    headers: { Authorization: 'Bearer eyJhbGciOi...' },
+  });
+});
+```
+
+Why: An `afterAll` with a hardcoded token or a foreign id either leaves rows on the shared tenant or deletes a program the test did not create.
+
+Do not `trackProgram` an id from a `page.route` fulfill. A mocked create did not persist a row. Never commit `.env`.
+
+## 6. API testing
+
+Assert the real Programs API with Playwright's `request` fixture, `baseURL` from `DIDAXIS_URL`, and `Authorization: Bearer ${process.env.DIDAXIS_API_TOKEN}`; check the status and the body shape.
+
+No feature spec does this yet. `tests/purge-programs.manual.spec.ts` opens `request.newContext` only to delete rows by hand. Advise this for an API check:
+
+✅ Good:
+
+```typescript
+test('GET /api/programs returns a program array', async ({ request }) => {
+  const token = process.env.DIDAXIS_API_TOKEN;
+  const response = await request.get('/api/programs', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(response.status()).toBe(200);
+  expect(Array.isArray(await response.json())).toBe(true);
+});
+```
+
+❌ Bad:
+
+```typescript
+const response = await request.get('/api/programs');
+expect(response.ok()).toBeTruthy();
+```
+
+Why: A call without the bearer token, checked only with `ok()`, treats 401 and 500 as the same boolean and never proves the list payload.
+
+Leave this call unrouted. Mocking the endpoint under test belongs in section 7 and voids the check.
+
+## 7. Network mocking
+
+Fulfill `/api/programs` with `page.route` in the spec, matched by method and path, and drive every click and navigation through `ProgramsPage`, `NewProgramModal`, and `EditProgramModal`; never mock the endpoint that test is verifying, and assert only copy read from the live page.
+
+No spec calls `page.route` yet. Advise this for an empty list:
+
+✅ Good:
+
+```typescript
+await page.route('**/api/programs', async (route) => {
+  if (route.request().method() !== 'GET') {
+    await route.continue();
+    return;
+  }
+  await route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: '[]',
+  });
+});
+const programsPage = new ProgramsPage(page);
+await programsPage.goto();
+await expect(programsPage.heading).toBeVisible();
+```
+
+❌ Bad:
+
+```typescript
+await page.route('**/api/**', (route) => route.fulfill({ status: 503, body: 'nope' }));
+await expect(page.getByText('Something went wrong')).toBeVisible();
+```
+
+Why: A blanket fulfill stubs the create or delete the test meant to hit, and an invented sentence passes while the app shows different copy or nothing.
+
+One case per test. Fulfill only the response whose UI handling is under test: `GET /api/programs` for the list, `POST /api/programs` for create, and the update request the edit form sends for save. Do not fulfill `DELETE /api/programs/<uuid>`. Before writing an assertion string, open the real programs page and read the error and empty-state sentence. If the app renders nothing, say so in the test.
+
+Fulfill these, each in its own test:
+
+- Save `503` — the UI error state, using copy read from the app.
+- List `200` with `[]` — the empty-state message, using copy read from the app.
+- List `200` with a malformed body (not a program array) — the app does not crash; assert visible copy only when the app shows it.
+- List or save `401`, `403`, `404`, `400`, `409`, `500`, `501`, `502`, `504`, `204` with an empty body, and `300` — the copy read from the app, or an explicit note that the app renders nothing. For `204`, `300`, and malformed `200`, also assert the page stays up.
+
+## 8. Accessibility
+
+Cover the programs page in `tests/programs.a11y.spec.ts` with one tag per test: an axe scan for `wcag2a` and `wcag2aa` asserted with `expect(results.violations).toEqual([])`, plus a keyboard path axe cannot do (tab to the primary control, `toBeFocused()`, Enter, dialog open), through existing page objects only.
+
+✅ Good — keyboard path in `tests/programs.a11y.spec.ts`; assertion shape required for the scan:
+
+```typescript
+await programsPage.tabToNewProgramButton();
+await expect(programsPage.newProgramButton).toBeFocused();
+await page.keyboard.press('Enter');
+await expect(modal.dialog).toBeVisible();
+
+const results = await new AxeBuilder({ page })
+  .withTags(['wcag2a', 'wcag2aa'])
+  .analyze();
+await expect(results.violations).toEqual([]);
+```
+
+❌ Bad — `tests/helpers/a11y.ts` returns without failing when `CI` is set:
+
+```typescript
+if (process.env.CI) {
+  testInfo.annotations.push({ type: 'axe-violations', description: summary });
+  return;
+}
+new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).disableRules(['color-contrast']);
+```
+
+Why: A CI early return or `.disableRules()` keeps the job green while the page still fails WCAG.
+
+Scope with `.include()` / `.exclude()` only if a third-party widget is noisy, and comment why. If the scan finds real violations, report them and stop.
+
+## 9. Assertions
+
+Assertions are web-first and live in the spec: `expect(locator).toBeVisible()`, `.toBeEnabled()`, `.toBeDisabled()`, `.toHaveText()`, or `.toBeFocused()`; assert the label the action produces, and do not change what an assertion checks to cure a flake.
+
+✅ Good — `tests/ds1-create-program.spec.ts`:
+
+```typescript
+await expect(modal.dialog).toBeVisible();
+await expect(modal.createButton).toBeDisabled();
+await expect(programsPage.programEditButton(programName)).toBeVisible();
+```
+
+❌ Bad:
+
+```typescript
+expect(await programsPage.heading.isVisible()).toBe(true);
+expect(programsPage.programEditButton(programName)).toBeTruthy();
+```
+
+Why: A one-shot `isVisible()` or a truthy locator reads the DOM once before the list paints, so the same spec fails or passes with no retry.
+
+## 10. Anti-flake
+
+Keep the runner contract, freeze any relative timestamp in the spec before navigation, and fix a flake by changing locators and waits only.
+
+`playwright.config.ts` already sets `fullyParallel: true`, `retries: process.env.CI ? 2 : 0`, and `trace: 'on-first-retry'`. Do not raise `retries` above 2. Do not set `workers`, including `workers: 1`. `use.baseURL` stays `process.env.DIDAXIS_URL`. `use.locale` and `use.timezoneId` are not named in this repo; ask the user before writing either value.
+
+No spec installs a frozen clock yet. Advise this when the assertion is a relative label such as `5 minutes ago`:
+
+✅ Good:
+
+```typescript
+await page.clock.install({ time: new Date('2026-11-01T15:00:00.000Z') });
+await programsPage.goto();
+await expect(programsPage.programRow(programName)).toContainText('5 minutes ago');
+```
+
+The call stays in the spec, not in a page object. Assert the label that instant produces.
+
+❌ Bad:
+
+```typescript
+retries: 5,
+workers: 1,
+await expect(page.getByText(/minutes ago/)).toBeVisible();
+```
+
+Why: Extra retries and a single worker hide a race, and a relative label follows the wall clock so the same spec fails after the timestamp rolls.
+
+## Do / Don't
+
+| Do | Don't |
+| --- | --- |
+| `getByRole`, then label, placeholder, text, then `getByTestId` with a why comment | CSS, XPath, `.first()`, or brittle text |
+| `.filter({ hasText })` when several elements match | Clicking the first match in DOM order |
+| `expect(locator).toBeVisible()` / `.toBeEnabled()` / `.toHaveText()` | `waitForTimeout`, `networkidle`, or `expect(await locator.isVisible()).toBe(true)` |
+| Actions in `pages/`; `expect` in the spec | Inline locators in a spec, or `expect` inside a page object |
+| `storageState` from `auth.setup.ts` for feature tests | UI login in every `beforeEach` |
+| `test.use({ storageState: { cookies: [], origins: [] } })` for login-page tests | Reusing the saved session to test Sign In |
+| `trackProgram(uuid)` from `fixtures/cleanup.fixture.ts` and `uniqueName` | `afterAll` cleanup, a hardcoded token, or deleting a row the test did not create |
+| `request.get` / `request.post` with status and body asserts for API checks | `expect(response.ok()).toBeTruthy()` with no bearer token |
+| `page.route` matched by method and path, copy read from the app | Mocking the endpoint the test verifies, fulfilling `DELETE`, or inventing error text |
+| `expect(results.violations).toEqual([])` and a keyboard path | `.disableRules()` or a CI path that swallows violations |
+| `page.clock.install({ time })` before navigation for relative timestamps | Asserting `minutes ago` against the wall clock |
+| `retries` of `process.env.CI ? 2 : 0`, no `workers` key | `retries` above 2 or `workers: 1` |

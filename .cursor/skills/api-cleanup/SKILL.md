@@ -22,6 +22,9 @@ its UUID and delete it via the API afterwards.
    `DELETE /api/programs/<uuid>` with a Bearer token from
    `process.env.DIDAXIS_API_TOKEN`.
 5. Never hardcode the token. Never delete data the test did not create.
+6. A `page.route` that fulfills create, update, or delete did not persist a
+   program. Do not `trackProgram` a fake id from that response. Scope the
+   route by method and path so it does not fulfill `DELETE /api/programs/<uuid>`.
 
 ## Reference
 - Endpoint: DELETE https://test.didaxis.studio/api/programs/<uuid>

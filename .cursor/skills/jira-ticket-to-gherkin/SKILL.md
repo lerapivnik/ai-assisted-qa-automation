@@ -46,6 +46,27 @@ Feature: <short title from ticket>
 - One `Feature` per ticket; scenario titles state intent and reference the AC when helpful.
 - Steps use domain language from the ticket (roles, field names, statuses, limits).
 - Do not invent product behavior not implied by the ticket; flag gaps under ambiguities instead.
+- Programs API edges name the status and the UI outcome (save `503`, list `200` `[]`, list `200` malformed, and `401`, `403`, `404`, `400`, `409`, `500`, `501`, `502`, `504`, `204`, `300`). Do not write the error or empty-state sentence in the scenario; the spec reads that copy from the live page.
+- A scenario that checks a relative timestamp names the frozen instant and the exact label (`5 minutes ago`). The spec installs that instant with `page.clock.install` before navigation. Do not write a step that reads the live clock.
+
+## Programs page accessibility
+
+When the ticket touches the programs page, add these scenarios (one behavior each). Do not invent a rule disable. If a crawl of the live page shows axe violations, list them under ambiguities and stop.
+
+```gherkin
+  # Accessibility
+  Scenario: Programs page meets WCAG 2.0 A and AA
+    Given the user is on the Programs page
+    When the page is scanned with tags wcag2a and wcag2aa
+    Then there are no accessibility violations
+
+  Scenario: Keyboard opens the New Program dialog
+    Given the user is on the Programs page
+    When the user tabs to the primary control
+    Then that control is focused
+    When the user presses Enter
+    Then the New Program dialog opens
+```
 
 ## Output
 

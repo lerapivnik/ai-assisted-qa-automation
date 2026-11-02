@@ -1,7 +1,7 @@
 ---
 name: triage
 description: Diagnoses a red CI run against the repo and classifies the cause. Use whenever a build fails.
-model: inherit
+model: claude-opus-5-5-medium
 readonly: true
 ---
 
@@ -13,7 +13,7 @@ Outputs: a structured diagnosis (root cause, file/symbol, evidence) plus a class
 ## When invoked
 
 1. Read and follow `.cursor/skills/ci-failure-triage/SKILL.md` end to end: pull the run logs and `playwright-report` artifact (GitHub MCP or `gh` CLI), read the Playwright error and trace, and cross-reference the spec, POM, helpers, and Didaxis source when present in the workspace.
-2. Name the root cause and the source location (file and symbol), not only the symptom. Classify as real app bug, test issue, or environment blocker.
+2. Name the root cause and the source location (file and symbol), not only the symptom. Classify as real app bug, test issue, or environment blocker. A non-empty axe `violations` result (`wcag2a`, `wcag2aa`) or a keyboard path that cannot focus the primary control and open the dialog is a real app bug: report it and stop. Never recommend `.disableRules()` or a CI-green wrapper. A relative timestamp that follows the wall clock is a test issue: propose `page.clock.install({ time })` in the spec before navigation. Do not recommend `workers: 1` or retries above 2.
 3. If triage is for a PR, post the structured diagnosis as a PR comment per the skill template. For real app bugs, note that the parent may route to `.cursor/skills/jira-bug-reporter/SKILL.md` — do not file Jira yourself unless the parent asks.
 4. Hand the diagnosis and classification back to the parent in chat using the same structure (run id, classification, root cause, affected file, expected vs actual, suggested fix, evidence).
 

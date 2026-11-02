@@ -50,7 +50,7 @@ Open `playwright-report-ci/index.html` (or `data/` payloads) and any embedded `t
 
 | Layer | Where |
 |-------|--------|
-| Spec | `tests/<file>.spec.ts` (ticket specs: `tests/dsN-*.spec.ts` → `DS-N`) |
+| Spec | `tests/<file>.spec.ts` (ticket specs: `tests/dsN-*.spec.ts` → `DS-N`; programs a11y: `tests/programs.a11y.spec.ts`) |
 | Feature | `features/DS-N.feature` |
 | POM | `pages/` — tests must not use inline locators |
 | Helpers | `tests/helpers/`, `fixtures/` |
@@ -62,9 +62,11 @@ Read the failing assertion, the POM method it called, and (if present) the Didax
 
 | Kind | Signals | Action |
 |------|---------|--------|
-| Real app bug | UI/API disagrees with ticket ACs or the spec's expected result | Follow `.cursor/skills/jira-bug-reporter/SKILL.md`; link the story; put the Bug key in the PR comment |
-| Test issue | Wrong locator, stale assertion, invented behavior, missing POM, flake/timing with no product error | Propose a patch for human review — do not commit, push, or merge |
+| Real app bug | UI/API disagrees with ticket ACs or the spec's expected result. Axe `violations` is non-empty for `wcag2a` / `wcag2aa`, or the keyboard path cannot focus the primary control or open the dialog | Report the violations and stop. Follow `.cursor/skills/jira-bug-reporter/SKILL.md`; link the story; put the Bug key in the PR comment. Do not suggest `.disableRules()`, a broader `.exclude()`, or a wrapper that keeps CI green |
+| Test issue | Wrong locator, stale assertion, invented behavior, missing POM, flake/timing with no product error, a relative timestamp read from the wall clock, inline locators in an a11y spec, or `.disableRules()` / a swallowed assertion used so the job stays green | Propose a patch for human review — do not commit, push, or merge. For flake, change locators and waits only: user-facing locators (`getByRole` → `getByLabel`/`getByPlaceholder` → `getByText` → `getByTestId` with a why comment), `.filter({ hasText })` instead of `.first()`, and `expect(locator).toBeVisible()` / `.toBeEnabled()` / `.toHaveText()` / `.toBeFocused()` instead of `waitForTimeout` or `expect(await locator.isVisible()).toBe(true)`. For a relative timestamp, propose `page.clock.install({ time })` in the spec before navigation, then assert the frozen label. Do not change what an assertion checks. Do not recommend `workers: 1` or retries above 2. For a silenced scan, propose `expect(results.violations).toEqual([])` and stop if real violations remain |
 | Environment | Missing secrets, login failure, app down, wrong `DIDAXIS_URL` | Report as a blocker; no Bug; no test patch |
+
+A status fulfilled by `page.route` is the test's own response, not an environment outage and not a product API failure. Invented error or empty-state copy is a test issue.
 
 ## Report (PR comment)
 

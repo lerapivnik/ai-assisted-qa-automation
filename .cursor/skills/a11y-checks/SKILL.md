@@ -31,13 +31,12 @@ const results = await new AxeBuilder({ page })
 await expect(results.violations).toEqual([]);
 ```
 
-- Load the target UI via POMs; wait with web-first `expect` before scanning.
+- Load the target UI via existing POMs; wait with web-first `expect` before scanning.
 - Assert with `expect(results.violations).toEqual([])` — never bare `assert`
-  or manual length checks.
+  or manual length checks. Do not wrap that assertion so the job stays green
+  when violations are present.
 - Scope with `.include()` / `.exclude()` **only** if a third-party widget is
-  noisy, and comment why. Prefer full-page scans for page-level coverage;
-  for a modal/component under test, `.include()` from a role-based POM helper
-  (e.g. `NewProgramModal.axeIncludeSelector()`) is fine.
+  noisy, and comment why. Prefer a full-page scan for the programs page.
 
 ## Keyboard test (axe cannot do this)
 
@@ -69,17 +68,20 @@ If the scan finds **real** violations: **report them and stop**.
 - Dedicated: `tests/<feature>.a11y.spec.ts`
 - Or an axe assertion at the end of a functional test that already reaches the UI
 
-Keep axe scans and keyboard asserts in specs, not POMs. POMs may expose
-`axeIncludeSelector()` helpers only.
+Keep axe scans and keyboard asserts in specs, not POMs. Navigate through
+existing POM methods and role-based locators. A POM selector for
+`.include()` / `.exclude()` is only for a noisy third-party widget, and the
+spec comments why.
 
 ## Checklists
 
 Generating:
 
 - [ ] `AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze()`
-- [ ] `await expect(results.violations).toEqual([])`
-- [ ] Keyboard path with `toBeFocused()` + Enter opens dialog (where applicable)
-- [ ] POMs only; one tag per test
+- [ ] `await expect(results.violations).toEqual([])` — not a wrapper that keeps CI green
+- [ ] Keyboard path: tab to the primary control, `toBeFocused()`, Enter opens the dialog
+- [ ] Existing POMs only; role-based locators; one tag per test
+- [ ] `.include()` / `.exclude()` only for a noisy third-party widget, with a comment
 - [ ] No `.disableRules()` — real violations reported and work stopped
 
 Reviewing:

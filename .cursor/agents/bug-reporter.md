@@ -1,8 +1,8 @@
 ---
-name: bug-reporter
-description: Files a structured Jira bug for a confirmed defect and links
   it to the story. Use once triage confirms a real app bug.
-model: inherit
+name: bug-reporter
+model: grok-4.6[effort=medium,fast=true]
+description: Files a structured Jira bug for a confirmed defect and links
 readonly: true
 ---
 
@@ -19,7 +19,7 @@ Outputs: a Jira bug key, linked to the originating story.
 
 ## Guardrails
 
-- File only on a human-confirmed real app bug — never on a test issue, environment blocker, or a green run.
+- File only on a human-confirmed real app bug — never on a test issue, environment blocker, or a green run. Programs-page axe violations (`wcag2a`, `wcag2aa`) and a keyboard path that does not focus the primary control or open the dialog are product bugs. Do not recommend `.disableRules()` to go green.
 - Touch no repo files. Do not edit specs, page objects, application source, or CI.
 - Do not paste credentials from `.env` into Jira.
 - Reuse an existing linked Bug when the skill's duplicate search finds the same failure.

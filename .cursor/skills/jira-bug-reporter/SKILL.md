@@ -20,9 +20,9 @@ Turn a Playwright failure into a Jira **Bug** linked to the original story ticke
 
 | Kind | Signals | Action |
 |------|---------|--------|
-| Product bug | UI/API disagrees with ticket ACs or the test's expected result | Create Bug |
-| Test defect | Wrong locator, stale assertion, invented behavior, timing without product error | Fix the test; no Bug |
-| Environment | Missing `.env`, login failure, app down, wrong `DIDAXIS_URL` | Report blocker; no Bug |
+| Product bug | UI/API disagrees with ticket ACs or the test's expected result. Programs-page axe reports `wcag2a` / `wcag2aa` violations, or keyboard focus / Enter does not open the dialog | Create Bug. Report the violations. Do not suggest `.disableRules()` to go green |
+| Test defect | Wrong locator, stale assertion, invented behavior, timing without product error, invented error or empty-state copy, inline locators, or a scan silenced with `.disableRules()` or a wrapper that passes when violations exist | Fix the test; no Bug |
+| Environment | Missing `.env`, login failure, app down, wrong `DIDAXIS_URL` | Report blocker; no Bug. A status the spec fulfilled with `page.route` is not an outage. |
 
 Search for duplicates first (`issuetype = Bug AND issue in linkedIssues("DS-1")` plus a summary keyword search). Reuse an existing Bug unless this is a distinct failure.
 
