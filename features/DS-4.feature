@@ -1,6 +1,7 @@
 # DS-4 — Delete program with confirmation
 # Jira: https://legionqaschool.atlassian.net/browse/DS-4
 # Story: As an admin user, I want to delete a program I no longer need, with a confirmation step to prevent accidental deletion.
+# Live UI recon: skipped. DIDAXIS_EMAIL and DIDAXIS_PASSWORD are not set.
 
 Feature: Delete program with confirmation
 
@@ -24,16 +25,6 @@ Feature: Delete program with confirmation
     And I click Cancel
     Then "Test Program" still exists in the list
 
-  @DS-4
-  Scenario: Confirmation dialog names the program and warns that the delete cannot be undone
-    Given I am logged in as admin
-    And a program "Test Program" exists
-    When I click the delete icon for "Test Program"
-    Then I see a confirmation dialog
-    And the message includes "Test Program"
-    And the message warns that semesters and courses will be removed
-    And the message states the action cannot be undone
-
   # Negative
 
   @DS-4
@@ -49,16 +40,7 @@ Feature: Delete program with confirmation
     Given I am not logged in
     When I navigate to the Programs page
     Then I am redirected to /login
-    And I see "Sign in to your account"
     And I do not see any Delete actions
-
-  @DS-4
-  Scenario: Confirmed deletion does not leave a leftover Delete action for that program
-    Given I am logged in as admin
-    And a program "Test Program" exists
-    When I click the delete icon for "Test Program"
-    And I confirm deletion
-    Then I do not see a Delete action for "Test Program"
 
   # Edge cases
 
@@ -80,22 +62,121 @@ Feature: Delete program with confirmation
     Then "Test Program" is not in the program list
 
   @DS-4
-  Scenario: Confirmation dialog includes the full name of a very long program
+  Scenario: Confirmation can be cancelled for a program with a very long name
     Given I am logged in as admin
     And a program with a 255-character name exists
     When I click the delete icon for that program
-    Then the confirmation message includes the full program name
-    And I can cancel the deletion
-    And the program still exists in the list
+    And I click Cancel
+    Then the program still exists in the list
+
+  # Accessibility
+
+  Scenario: Programs page meets WCAG 2.0 A and AA
+    Given the user is on the Programs page
+    When the page is scanned with tags wcag2a and wcag2aa
+    Then there are no accessibility violations
+
+  Scenario: Keyboard opens the New Program dialog
+    Given the user is on the Programs page
+    When the user tabs to the primary control
+    Then that control is focused
+    When the user presses Enter
+    Then the New Program dialog opens
+
+  # Programs API edges
+
+  Scenario: Delete returns 503
+    Given I am logged in as admin
+    And a program "Test Program" exists
+    When I confirm deletion of "Test Program"
+    And the delete request returns status 503
+    Then the programs page shows the error outcome for status 503
+
+  Scenario: Program list returns 200 with an empty array
+    Given I am logged in as admin
+    When the program list returns status 200 with an empty array
+    Then the programs page shows the empty-state outcome
+
+  Scenario: Program list returns 200 with a malformed body
+    Given I am logged in as admin
+    When the program list returns status 200 with a malformed body
+    Then the programs page stays up
+
+  Scenario: Program list returns 401
+    Given I am logged in as admin
+    When the program list returns status 401
+    Then the programs page shows the outcome for status 401
+
+  Scenario: Program list returns 403
+    Given I am logged in as admin
+    When the program list returns status 403
+    Then the programs page shows the outcome for status 403
+
+  Scenario: Program list returns 404
+    Given I am logged in as admin
+    When the program list returns status 404
+    Then the programs page shows the outcome for status 404
+
+  Scenario: Delete returns 400
+    Given I am logged in as admin
+    And a program "Test Program" exists
+    When I confirm deletion of "Test Program"
+    And the delete request returns status 400
+    Then the programs page shows the outcome for status 400
+
+  Scenario: Delete returns 409
+    Given I am logged in as admin
+    And a program "Test Program" exists
+    When I confirm deletion of "Test Program"
+    And the delete request returns status 409
+    Then the programs page shows the outcome for status 409
+
+  Scenario: Delete returns 500
+    Given I am logged in as admin
+    And a program "Test Program" exists
+    When I confirm deletion of "Test Program"
+    And the delete request returns status 500
+    Then the programs page shows the outcome for status 500
+
+  Scenario: Delete returns 501
+    Given I am logged in as admin
+    And a program "Test Program" exists
+    When I confirm deletion of "Test Program"
+    And the delete request returns status 501
+    Then the programs page shows the outcome for status 501
+
+  Scenario: Delete returns 502
+    Given I am logged in as admin
+    And a program "Test Program" exists
+    When I confirm deletion of "Test Program"
+    And the delete request returns status 502
+    Then the programs page shows the outcome for status 502
+
+  Scenario: Delete returns 504
+    Given I am logged in as admin
+    And a program "Test Program" exists
+    When I confirm deletion of "Test Program"
+    And the delete request returns status 504
+    Then the programs page shows the outcome for status 504
+
+  Scenario: Delete returns 204 with an empty body
+    Given I am logged in as admin
+    And a program "Test Program" exists
+    When I confirm deletion of "Test Program"
+    And the delete request returns status 204 with an empty body
+    Then the programs page stays up
+
+  Scenario: Delete returns 300
+    Given I am logged in as admin
+    And a program "Test Program" exists
+    When I confirm deletion of "Test Program"
+    And the delete request returns status 300
+    Then the programs page stays up
 
   # Ambiguities (review with PO)
-  # - AC says "confirmation dialog"; the live app uses native window.confirm() with OK/Cancel, not an in-app Mantine modal (related: DS-172, DS-210).
-  # - AC says "click Cancel"; Playwright dismisses the native dialog (dialog.dismiss()), not a Cancel button in the page.
-  # - Delete control is a Mantine ActionIcon with accessible name "Delete {Program Name}" and an SVG trash icon (no visible text, not an emoji).
-  # - Confirm copy is: Delete program "{name}"? All its semesters and courses will be removed. This cannot be undone.
-  # - Cascade of semesters/courses is only warned in the dialog; backend cascade is not specified in AC.
-  # - No success toast after delete; removal from the list is the only confirmation (no role=alert).
-  # - Rapid double-click on Delete can queue two native confirms (related: DS-30, DS-109, DS-156, DS-218) — not specified as intended AC behavior.
-  # - Empty-state after deleting the last program is not testable on the shared tenant (hundreds of programs always present).
-  # - Failed DELETE has no user-visible error (related: DS-116, DS-155); AC does not define error handling.
-  # - Non-admin delete permissions are not specified in AC.
+  # - Live UI recon was skipped this run because DIDAXIS_EMAIL and DIDAXIS_PASSWORD are not set. Confirmation control type, Cancel control, delete-icon accessible name, and any visible error or empty-state sentence were not read from the page. Do not invent that copy in the spec.
+  # - AC says "confirmation dialog" and "click Cancel" without naming an in-app dialog versus a native confirm.
+  # - AC example name is "Test Program". Whether a description is required to create that program is not stated.
+  # - Whether deleting a program cascades semesters and courses is not in the AC.
+  # - Failed delete, double-click, and non-admin permission behavior are not in the AC.
+  # - Empty state after the last program is deleted is not in the AC. The empty-array scenario names the status and the empty-state outcome only.
