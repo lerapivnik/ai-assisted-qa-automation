@@ -15,6 +15,9 @@ export class ProgramsPage {
   readonly searchPlaceholder: Locator;
   readonly searchTextbox: Locator;
   readonly filterButton: Locator;
+  /** Live empty-state copy when GET /api/programs returns { data: [] }. */
+  readonly emptyStateMessage: Locator;
+  readonly createFirstProgramButton: Locator;
   readonly newProgramModal: NewProgramModal;
   readonly editProgramModal: EditProgramModal;
 
@@ -31,6 +34,13 @@ export class ProgramsPage {
     this.searchPlaceholder = page.getByPlaceholder(/search/i);
     this.searchTextbox = page.getByRole('textbox', { name: /search/i });
     this.filterButton = page.getByRole('button', { name: /filter/i });
+    this.emptyStateMessage = page.getByText(
+      'No programs yet. Create your first program to get started.',
+    );
+    this.createFirstProgramButton = page.getByRole('button', {
+      name: 'Create Program',
+      exact: true,
+    });
     this.newProgramModal = new NewProgramModal(page);
     this.editProgramModal = new EditProgramModal(page);
   }
@@ -65,6 +75,10 @@ export class ProgramsPage {
 
   async openNewProgramForm(): Promise<void> {
     await this.newProgramButton.click();
+  }
+
+  async openCreateFirstProgramForm(): Promise<void> {
+    await this.createFirstProgramButton.click();
   }
 
   async openEditForm(name: string): Promise<void> {
