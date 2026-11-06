@@ -27,7 +27,7 @@ async function openCreateForm(programsPage: ProgramsPage): Promise<void> {
   await programsPage.openNewProgramForm();
   await expect(modal.dialog).toBeVisible();
   await expect(modal.programName).toBeVisible();
-  await expect(modal.description).toBeVisible();
+  await expect(modal.description).not.toBeVisible();
 }
 
 async function dblClickCreateAndTrack(
@@ -74,7 +74,7 @@ test.describe('Create new academic program', () => {
       const modal = programsPage.newProgramModal;
       await openCreateForm(programsPage);
 
-      await expect(modal.programName).toBeEditable();
+      await expect(modal.programName).not.toBeEditable();
       await expect(modal.programName).toHaveAttribute(
         'placeholder',
         'e.g. Computer Science BSc',

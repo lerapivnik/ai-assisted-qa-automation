@@ -23,11 +23,11 @@ export class ProgramsPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.heading = page.getByRole('heading', { name: 'Programs' });
-    this.newProgramButton = page.getByRole('button', { name: '+ New Program' });
+    this.heading = page.getByRole('heading', { name: 'Programmss' });
+    this.newProgramButton = page.getByRole('button', { name: '+ New Programms' });
     this.table = page.getByRole('table');
     this.rows = page.getByRole('row');
-    this.programColumnHeader = page.getByRole('columnheader', { name: 'Program' });
+    this.programColumnHeader = page.getByRole('columnheader', { name: 'Programms' });
     this.alerts = page.getByRole('alert');
     this.deleteActions = page.getByRole('button', { name: /^Delete / });
     this.failureMessage = page.getByText(/conflict|already|error|failed/i);

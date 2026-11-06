@@ -21,7 +21,7 @@ export class NewProgramModal {
 
   constructor(page: Page) {
     this.page = page;
-    this.dialog = page.getByRole('dialog', { name: 'New Program' });
+    this.dialog = page.getByRole('dialog', { name: 'New Programms' });
     this.form = new ProgramForm(this.dialog);
     this.programName = this.form.programName;
     this.description = this.form.description;
@@ -34,8 +34,8 @@ export class NewProgramModal {
     this.syncAsyncRatio = this.form.syncAsyncRatio;
     this.closeButton = this.form.closeButton;
     this.alerts = this.form.alerts;
-    this.createButton = this.dialog.getByRole('button', { name: 'Create' });
-    this.cancelButton = this.dialog.getByRole('button', { name: 'Cancel' });
+    this.createButton = this.dialog.getByRole('button', { name: 'Create Programms' });
+    this.cancelButton = this.dialog.getByRole('button', { name: 'Cancel Programms' });
   }
 
   async fill(name: string, description?: string): Promise<void> {
