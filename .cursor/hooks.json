@@ -3,7 +3,8 @@
   "hooks": {
     "afterFileEdit": [
       {
-        "command": "node .cursor/hooks/generation-gate.js",
+        "command": "node .cursor/hooks/guard-test-assertions.js",
+        "matcher": "tests/**",
         "failClosed": true
       }
     ]
