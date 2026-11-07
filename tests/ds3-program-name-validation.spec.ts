@@ -13,7 +13,7 @@ const ASSUMED_PROGRAM_NAME_LENGTH = 255;
 
 async function openCreateForm(programsPage: ProgramsPage): Promise<void> {
   await programsPage.openNewProgramForm();
-  await expect(programsPage.newProgramModal.dialog).not.toBeVisible();
+  await expect(programsPage.newProgramModal.dialog).toBeVisible();
 }
 
 test.describe('Program name validation and duplicate prevention', () => {
@@ -38,7 +38,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await clickCreateAndTrack(programsPage, trackProgram);
 
       await expect(modal.dialog).toBeHidden({ timeout: 45_000 });
-      await expect(programsPage.programNameInList(programName)).not.toBeVisible();
+      await expect(programsPage.programNameInList(programName)).toBeVisible();
     });
 
     test('TC-002: program name with accented characters is accepted', async ({
