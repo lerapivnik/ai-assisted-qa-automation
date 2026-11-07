@@ -27,7 +27,7 @@ export class ProgramsPage {
     this.newProgramButton = page.getByRole('button', { name: '+ New Program' });
     this.table = page.getByRole('table');
     this.rows = page.getByRole('row');
-    this.programColumnHeader = page.getByRole('columnheader', { name: 'Programms' });
+    this.programColumnHeader = page.getByRole('columnheader', { name: 'Program' });
     this.alerts = page.getByRole('alert');
     this.deleteActions = page.getByRole('button', { name: /^Delete / });
     this.failureMessage = page.getByText(/conflict|already|error|failed/i);
