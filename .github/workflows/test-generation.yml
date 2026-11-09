@@ -1,9 +1,9 @@
 name: Test generation
 
 on:
-  schedule:
-    # 06:00 UTC, Monday–Friday
-    - cron: '0 6 * * 1-5'
+  # schedule:
+  #   # 06:00 UTC, Monday–Friday
+  #   - cron: "0 6 * * 1-5"
   workflow_dispatch:
 
 permissions:
@@ -13,12 +13,13 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 180
     env:
       DIDAXIS_URL: ${{ secrets.DIDAXIS_URL }}
       DIDAXIS_EMAIL: ${{ secrets.DIDAXIS_EMAIL }}
       DIDAXIS_PASSWORD: ${{ secrets.DIDAXIS_PASSWORD }}
       DIDAXIS_API_TOKEN: ${{ secrets.DIDAXIS_API_TOKEN }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -31,28 +32,47 @@ jobs:
 
       - run: npx playwright install --with-deps chromium
 
-      - run: |
+      - name: Install Cursor CLI
+        run: |
           curl https://cursor.com/install -fsS | bash
-          echo "$HOME/.cursor/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - env:
-          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
-          ATLASSIAN_API_TOKEN: ${{ secrets.ATLASSIAN_API_TOKEN }}
+      - name: Verify Jira API credentials
+        env:
           ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
-          ATLASSIAN_PASSWORD: ${{ secrets.ATLASSIAN_PASSWORD }}
+          ATLASSIAN_API_TOKEN: ${{ secrets.ATLASSIAN_API_TOKEN }}
+        run: |
+          code="$(curl -s -o /dev/null -w '%{http_code}' \
+            -u "${ATLASSIAN_EMAIL}:${ATLASSIAN_API_TOKEN}" \
+            "https://legionqaschool.atlassian.net/rest/api/3/myself")"
+          if [ "$code" != "200" ]; then
+            echo "::error::Jira REST auth failed (HTTP ${code}). Use ATLASSIAN_EMAIL + API token, not account password."
+            exit 1
+          fi
+
+      - name: Work the In Progress backlog
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
+          ATLASSIAN_API_TOKEN: ${{ secrets.ATLASSIAN_API_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           agent -p --force --trust --output-format text "$(cat <<'EOF'
-          Work the Jira backlog of tickets in status "In Progress".
+          Backlog mode. This workflow is the external trigger. Follow .cursor/rules/qa-orchestration.mdc.
 
-          Budget: 5 tickets this run. For each ticket, in order:
-          1. Analyze the ticket into a test plan. Follow .cursor/skills/jira-ticket-to-gherkin/SKILL.md and .cursor/rules/qa-orchestration.mdc. Crawl the app before finalizing the plan.
-          2. Write a conforming Playwright spec under tests/. Follow .cursor/rules/playwright-conventions.mdc and the pom-conventions, a11y-checks, and api-cleanup skills. Add page objects or helpers only when the spec needs them (pages/, tests/helpers/, fixtures/). Do not edit application source or playwright.config.ts.
+          Work DS tickets in status "In Progress" that do not have the tests-generated label. Take at most 5 tickets, lowest key first.
+
+          For each ticket:
+          1. Analyze the ticket, including live UI recon when DIDAXIS_EMAIL and DIDAXIS_PASSWORD are set.
+          2. Write a conforming Playwright spec under tests/. Page objects and fixtures only under pages/ and fixtures/. Do not edit application source.
           3. Run that spec with npx playwright test.
-          4. Open a pull request linked to the ticket. Put the Jira key in the branch name, commit message, and PR title. Add the tests-generated label.
-          5. Never merge. A human approves the pull request.
+          4. If the same spec fails the same way again, stop that ticket and move on. Do not retry it.
+          5. Open one pull request linked to the ticket. Put the DS key in the title and body.
+          6. Add the tests-generated label on the Jira ticket so the next run skips it.
 
-          If the spec is red, follow the orchestration loop guard (at most 3 delegations; do not re-run the same failing spec more than twice). Leave the pull request unmerged.
+          Never merge a pull request. Never close or transition the ticket. A human approves every merge and every filed bug.
+
+          Use ATLASSIAN_EMAIL with ATLASSIAN_API_TOKEN for Jira (API token auth). Use GITHUB_TOKEN for git and pull requests.
           EOF
           )"
 
