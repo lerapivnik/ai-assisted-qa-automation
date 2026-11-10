@@ -21,7 +21,8 @@ export class NewProgramModal {
 
   constructor(page: Page) {
     this.page = page;
-    this.dialog = page.getByRole('dialog', { name: 'New Program' });
+    // The accessibility tree shows this dialog with no accessible name.
+    this.dialog = page.getByRole('dialog');
     this.form = new ProgramForm(this.dialog);
     this.programName = this.form.programName;
     this.description = this.form.description;
@@ -34,8 +35,8 @@ export class NewProgramModal {
     this.syncAsyncRatio = this.form.syncAsyncRatio;
     this.closeButton = this.form.closeButton;
     this.alerts = this.form.alerts;
-    this.createButton = this.dialog.getByRole('button', { name: 'Create' });
-    this.cancelButton = this.dialog.getByRole('button', { name: 'Cancel' });
+    this.createButton = this.dialog.getByRole('button', { name: 'Create', exact: true });
+    this.cancelButton = this.dialog.getByRole('button', { name: 'Cancel', exact: true });
   }
 
   async fill(name: string, description?: string): Promise<void> {

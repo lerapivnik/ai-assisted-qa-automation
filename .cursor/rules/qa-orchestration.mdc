@@ -1,11 +1,11 @@
 ---
-description: How to drive a QA ticket or a red build to done by delegating to test-writer, triage, and bug-reporter subagents.
+description: How to drive a QA ticket or a red build to done by delegating to test-writer, triage, and bug-reporter, and by applying the self-heal skill on locator drift.
 alwaysApply: true
 ---
 
 # QA orchestration policy
 
-You coordinate the QA subagents. Do the analysis yourself (apply the jira-ticket-to-gherkin skill to turn a ticket into a plan); delegate the rest.
+You coordinate the QA subagents. Do the analysis yourself (apply the jira-ticket-to-gherkin skill to turn a ticket into a plan); delegate the rest. Locator drift is repaired by the self-heal skill (`.cursor/skills/self-heal/SKILL.md`), registered below under Heal on red.
 
 ## Routing
 
@@ -14,9 +14,31 @@ You coordinate the QA subagents. Do the analysis yourself (apply the jira-ticket
 | Ticket given | Analyze → produce a test plan |
 | Plan ready | Delegate to **test-writer** |
 | Spec returned | Run `npx playwright test` |
-| Run is red | Delegate to **triage** |
-| Real app bug | Delegate to **bug-reporter** |
-| Test issue | Delegate to **test-writer** (propose a fix; human OKs) |
+| Run is red | Delegate to **triage** to classify, then follow **Heal on red** |
+| Drift (test issue) | Apply **self-heal** |
+| Real app bug | Delegate to **bug-reporter** — never heal |
+| Other test issue | Delegate to **test-writer** (propose a fix; human OKs) |
+
+## Heal on red
+
+On a red run, delegate to **triage** (`.cursor/skills/ci-failure-triage/SKILL.md`) and wait for a classification. Do not patch from the Playwright error alone.
+
+**Drift (test issue).** The root cause is a locator that no longer matches (element not found, timeout resolving a locator, or a strict-mode violation on that locator). Apply `.cursor/skills/self-heal/SKILL.md`:
+
+1. Re-discover the element via the Agent-Browser accessibility tree (`plugin-playwright-playwright`: `browser_navigate` to `DIDAXIS_URL` plus the path the spec uses, then `browser_snapshot`). Match the control by its role and the accessible name the tree shows now.
+2. Patch that one locator in the page object under `pages/`. Leave the spec, its assertions, application source, and `playwright.config.ts` untouched.
+3. Re-run the failing spec and prove green with assertions unchanged (`git diff -- tests/` empty).
+4. Open a repair pull request linked to the CI run. Commit only the page object.
+
+The skill heals one locator per application. This policy allows that application up to **5 heals per run** (five drifted locators). A heal that will not prove green stops the loop: do not try a second locator on that failure, and do not re-run that spec again to force a pass. Escalate — **bug-reporter** when the remaining failure is a product defect or an assertion problem; otherwise stop and ask.
+
+**Real app bug.** Delegate to **bug-reporter** to file the bug and link it to the story and the run. Never heal a bug. Do not edit the page object or the spec.
+
+**Anything else** (environment, stale assertion, invented copy, timing flake with no locator change). Do not heal. Follow triage.
+
+Never heal an assertion. A green run that required adding, removing, rewording, or loosening an `expect` is a bug: revert the change and escalate to **bug-reporter**.
+
+Never merge a repair without a human.
 
 ## Ticket → plan (you + jira-ticket-to-gherkin)
 
@@ -45,8 +67,8 @@ If the scan finds real violations, report them and stop. Never ask **test-writer
 
 ## Loop guard
 
-- At most **3 delegations** per task.
-- Never re-run the **same failing spec** more than **twice** — then stop and ask.
+- At most **3 delegations** per task (test-writer, triage, bug-reporter). A self-heal application is not one of those delegations; it is capped by the **5 heals per run** budget in Heal on red.
+- Never re-run the **same failing spec** more than **twice** — then stop and ask. A heal that is still red after its proof re-run stops; do not spend another heal on that spec.
 
 ## Guardrails
 
@@ -56,6 +78,7 @@ If the scan finds real violations, report them and stop. Never ask **test-writer
   - **test-writer:** writes under `tests/` only (plus test-support in `pages/`, `tests/helpers/`, `fixtures/` when the spec needs it); never application source.
   - **triage:** read-only CI diagnosis; no repo edits, no merge, no auto-fix.
   - **bug-reporter:** files and links Jira only; no repo edits.
+  - **self-heal:** one drifted locator in `pages/` per application, at most 5 per run; never assertions, never application source, never `playwright.config.ts`. Opens a repair PR linked to the run; does not merge.
 
 ## Approval
 
@@ -63,4 +86,4 @@ A human approves any merge and any filed bug.
 
 ## Done
 
-The suite is green for the ticket, **or** a bug is filed and linked.
+The suite is green for the ticket, **or** a repair PR for drift is open and linked to the run (a human merges), **or** a bug is filed and linked.

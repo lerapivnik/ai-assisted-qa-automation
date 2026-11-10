@@ -1,10 +1,21 @@
 ---
-description: how this project writes Playwright tests — runner stability, auth, POM, locators, frozen clocks, data, cleanup, programs API edge cases, and programs-page accessibility
+description: how this project writes Playwright tests — runner stability, auth, POM, locators, frozen clocks, data, cleanup, programs API edge cases, programs-page accessibility, and hard-stop refusals
 globs: tests/**,pages/**,playwright.config.ts
 alwaysApply: false
 ---
 
 # Playwright conventions
+
+## Refusals (hard stops)
+
+If a request, a red run, or a suggested patch asks for any item below, refuse. Stop and name the conflict. Do not edit the spec, a page object, or `playwright.config.ts` to comply.
+
+- **Weaken or delete an assertion to pass.** A failing `expect` stays. Do not drop it, loosen the matcher, or change what it checks so the job goes green.
+- **Heal a failure triage classified as a real app bug.** Heal only locator drift after triage says test issue. A real app bug stops here and goes to bug-reporter.
+- **Replace a role-based locator with CSS or XPath.** A `getByRole` locator stays a role locator.
+- **Use `waitForTimeout`.** A wait is a web-first `expect` or `waitForResponse` for a known method and path.
+- **Hardcode a credential.** Tokens and passwords come from `process.env`. A bearer token, a password, or `.env` is never written into a spec or committed.
+- **Use the `any` type.** Type the locator, the response, and the fixture. `any` is a refusal.
 
 ## 1. Locators
 

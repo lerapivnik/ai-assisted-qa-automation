@@ -58,7 +58,7 @@ Feature: Delete program with confirmation
     Then the New Program dialog opens
 
   # Ambiguities (review with PO)
-  # - Live wcag2a/wcag2aa scan on the Programs page reported color-contrast, impact serious, 893 nodes. Generation stopped before Playwright. Do not disable rules.
+  # - Live wcag2a/wcag2aa scan on the Programs page reported color-contrast, impact serious, 893 nodes. Do not disable rules.
   # - The confirmation is a browser confirm dialog. Accept removes the program. The in-page role=dialog locator does not match it.
   # - AC says "click Cancel". The native dialog's dismiss control is the confirm Cancel button. No separate in-page Cancel was present.
   # - AC does not define deleting a program that still has semesters beyond the warning text, or double-click on delete.
