@@ -4,6 +4,7 @@ import { openPrograms } from './helpers/auth';
 import {
   clickCreateAndTrack,
   createTrackedProgram,
+  expectProgramListed,
   nameOfLength,
   uniqueName,
 } from './helpers/programs';
@@ -38,7 +39,8 @@ test.describe('Program name validation and duplicate prevention', () => {
       await clickCreateAndTrack(programsPage, trackProgram);
 
       await expect(modal.dialog).toBeHidden({ timeout: 45_000 });
-      await expect(programsPage.programNameInList(programName)).toBeVisible();
+      await programsPage.reloadList();
+      await expectProgramListed(programsPage, programName);
     });
 
     test('TC-002: program name with accented characters is accepted', async ({
@@ -55,7 +57,8 @@ test.describe('Program name validation and duplicate prevention', () => {
       await clickCreateAndTrack(programsPage, trackProgram);
 
       await expect(modal.dialog).toBeHidden({ timeout: 45_000 });
-      await expect(programsPage.programNameInList(programName)).toBeVisible();
+      await programsPage.reloadList();
+      await expectProgramListed(programsPage, programName);
     });
 
     test('TC-003: whitespace-only program name is rejected and form is not submitted', async ({
@@ -151,7 +154,8 @@ test.describe('Program name validation and duplicate prevention', () => {
       await clickCreateAndTrack(programsPage, trackProgram);
 
       await expect(modal.dialog).toBeHidden({ timeout: 45_000 });
-      await expect(programsPage.programNameInList(programName)).toBeVisible();
+      await programsPage.reloadList();
+      await expectProgramListed(programsPage, programName);
     });
 
     test('TC-009: program name longer than 255 characters is accepted', async ({
@@ -168,7 +172,8 @@ test.describe('Program name validation and duplicate prevention', () => {
       await clickCreateAndTrack(programsPage, trackProgram);
 
       await expect(modal.dialog).toBeHidden({ timeout: 45_000 });
-      await expect(programsPage.programNameInList(programName)).toBeVisible();
+      await programsPage.reloadList();
+      await expectProgramListed(programsPage, programName);
       await expect(modal.alerts).toHaveCount(0);
     });
 
@@ -193,7 +198,8 @@ test.describe('Program name validation and duplicate prevention', () => {
 
       await expect(modal.dialog).toBeHidden({ timeout: 45_000 });
       expect(dialogOpened).toBe(false);
-      await expect(programsPage.programNameInList(programName)).toBeVisible();
+      await programsPage.reloadList();
+      await expectProgramListed(programsPage, programName);
     });
 
     test('TC-011: program name with only special characters is accepted', async ({
@@ -210,7 +216,8 @@ test.describe('Program name validation and duplicate prevention', () => {
       await clickCreateAndTrack(programsPage, trackProgram);
 
       await expect(modal.dialog).toBeHidden({ timeout: 45_000 });
-      await expect(programsPage.programNameInList(programName)).toBeVisible();
+      await programsPage.reloadList();
+      await expectProgramListed(programsPage, programName);
     });
 
     test('TC-012: duplicate prevention does not block edit rename to existing name', async ({

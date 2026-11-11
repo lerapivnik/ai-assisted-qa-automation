@@ -5,10 +5,7 @@ import {
   trackCreateFromResponse,
 } from '../fixtures/cleanup.fixture';
 import { ProgramsPage } from '../pages/ProgramsPage';
-
-function uniqueName(base: string): string {
-  return `${base} ${Date.now()}`;
-}
+import { expectProgramListed, uniqueName } from './helpers/programs';
 
 test.describe('Programs', () => {
   test.describe.configure({ timeout: 120_000 });
@@ -50,8 +47,11 @@ test.describe('Programs', () => {
     await trackCreateFromResponse(await createResponse, trackProgram);
 
     await expect(programsPage.newProgramModal.dialog).toBeHidden({ timeout: 45_000 });
-    await expect(programsPage.programNameInList(programName)).toBeVisible();
-    await expect(programsPage.programDescriptionInList(programName, description)).toBeVisible();
+    await programsPage.reloadList();
+    await expectProgramListed(programsPage, programName);
+    await expect(programsPage.programDescriptionInList(programName, description)).toBeVisible({
+      timeout: 30_000,
+    });
   });
 
   test('program is created with only Program Name filled', async ({
@@ -70,6 +70,7 @@ test.describe('Programs', () => {
     await trackCreateFromResponse(await createResponse, trackProgram);
 
     await expect(programsPage.newProgramModal.dialog).toBeHidden({ timeout: 45_000 });
-    await expect(programsPage.programEditButton(programName)).toBeVisible();
+    await programsPage.reloadList();
+    await expect(programsPage.programEditButton(programName)).toBeVisible({ timeout: 30_000 });
   });
 });

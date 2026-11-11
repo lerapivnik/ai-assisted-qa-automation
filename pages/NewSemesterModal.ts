@@ -37,4 +37,8 @@ export class NewSemesterModal {
     await this.fillStartDate(startDate);
     await this.fillEndDate(endDate);
   }
+
+  async clickCreate(): Promise<void> {
+    await this.createButton.click();
+  }
 }
