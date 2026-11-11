@@ -53,8 +53,29 @@ jobs:
           5. Never merge. A human approves the pull request.
 
           If the spec is red, follow the orchestration loop guard (at most 3 delegations; do not re-run the same failing spec more than twice). Leave the pull request unmerged.
+
+          Before finishing, update .cursor/eval-ask-vs-guess.json for this run's asks vs invented values (even if both are 0). The workflow regenerates eval-report.md after you exit.
           EOF
           )"
+
+      - name: Regenerate eval-report.md
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # CI has no agent-transcript session review; keep last committed ask/guess file.
+        run: |
+          git fetch origin main
+          git checkout -B main origin/main
+          npm run eval:report
+          if git diff --quiet -- eval-report.md; then
+            echo "eval-report.md unchanged"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add eval-report.md
+            git commit -m "chore: refresh eval-report after test-generation"
+            git push origin HEAD:main
+          fi
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}

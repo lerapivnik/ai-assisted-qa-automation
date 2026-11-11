@@ -3,9 +3,15 @@
   "hooks": {
     "afterFileEdit": [
       {
-        "command": "node .cursor/hooks/guard-test-assertions.js",
-        "matcher": "tests/**",
+        "command": "node .cursor/hooks/guard-constitution-wont.js",
+        "matcher": "Write",
         "failClosed": true
+      }
+    ],
+    "stop": [
+      {
+        "command": "node .cursor/hooks/remind-eval-report.js",
+        "loop_limit": 1
       }
     ]
   }

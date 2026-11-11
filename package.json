@@ -8,7 +8,8 @@
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
-    "purge": "node scripts/purge.js"
+    "purge": "node scripts/purge.js",
+    "eval:report": "node scripts/write-eval-report.mjs"
   },
   "repository": {
     "type": "git",
