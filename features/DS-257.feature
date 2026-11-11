@@ -2,6 +2,7 @@
 # Jira: https://legionqaschool.atlassian.net/browse/DS-257
 # Story: As an admin user, I want to edit an existing program's details so that I can correct or update program information after creation.
 # Live crawl: Edit control accessible name is "Edit <program name>". Dialog name is "Edit Program". Name and Description are pre-filled. Save is enabled.
+# Playwright: covered by tests/ds2-edit-program.spec.ts (shared with DS-2; duplicate ds257 spec removed).
 
 Feature: Edit existing program details
 

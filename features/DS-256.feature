@@ -2,6 +2,7 @@
 # Jira: https://legionqaschool.atlassian.net/browse/DS-256
 # Story: As an admin user, I want to create a new academic program so that I can begin designing its curriculum structure.
 # Live crawl: https://test.didaxis.studio/programs on 2026-11-03. Admin sign-in reaches Dashboard, then Programs.
+# Playwright: covered by tests/ds1-create-program.spec.ts (shared with DS-1; duplicate ds256 spec removed).
 
 Feature: Create new academic program
 

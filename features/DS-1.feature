@@ -1,6 +1,7 @@
 # DS-1 — Create new academic program
 # Jira: https://legionqaschool.atlassian.net/browse/DS-1
 # Story: As an admin user, I want to create a new academic program so that I can begin designing its curriculum structure.
+# Playwright: tests/ds1-create-program.spec.ts (also covers DS-256 create ACs).
 
 Feature: Create new academic program
 

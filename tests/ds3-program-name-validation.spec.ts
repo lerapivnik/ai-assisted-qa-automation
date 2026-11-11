@@ -9,7 +9,11 @@ import {
   uniqueName,
 } from './helpers/programs';
 
-/** Jira does not define a max length. The live form has no HTML maxLength. */
+/**
+ * Program-name validation for DS-3 and DS-258 (same ACs; no separate ds258 spec).
+ * Plans: `features/DS-3.feature`, `features/DS-258.feature`.
+ * Jira does not define a max length. The live form has no HTML maxLength.
+ */
 const ASSUMED_PROGRAM_NAME_LENGTH = 255;
 
 async function openCreateForm(programsPage: ProgramsPage): Promise<void> {

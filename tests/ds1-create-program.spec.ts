@@ -9,7 +9,11 @@ import { ProgramsPage } from '../pages/ProgramsPage';
 import { openPrograms } from './helpers/auth';
 import { clickCreateAndTrack, nameOfLength, uniqueName } from './helpers/programs';
 
-/** DS-1 ACs do not define a max length. The live form has no HTML maxLength. */
+/**
+ * Create-program coverage for DS-1 and DS-256 (same ACs; former `programs.spec.ts` / ds256 suites folded in).
+ * Plans: `features/DS-1.feature`, `features/DS-256.feature`.
+ * DS-1 ACs do not define a max length. The live form has no HTML maxLength.
+ */
 const ASSUMED_PROGRAM_NAME_LENGTH = 255;
 
 async function expectProgramCreated(

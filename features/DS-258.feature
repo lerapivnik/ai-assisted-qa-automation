@@ -2,6 +2,7 @@
 # Jira: https://legionqaschool.atlassian.net/browse/DS-258
 # Story: As an admin user, I want the system to prevent invalid or duplicate program names so that data integrity is maintained.
 # Live crawl: Program Name of three spaces leaves Create disabled. An identical name was accepted twice (two persisted ids).
+# Playwright: covered by tests/ds3-program-name-validation.spec.ts (shared with DS-3; no separate ds258 spec).
 
 Feature: Program name validation and duplicate prevention
 

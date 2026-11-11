@@ -1,6 +1,7 @@
 # DS-4 — Delete program with confirmation
 # Jira: https://legionqaschool.atlassian.net/browse/DS-4
 # Story: As an admin user, I want to delete a program I no longer need, with a confirmation step to prevent accidental deletion.
+# Playwright: tests/ds4-delete-program.spec.ts (also covers DS-259 delete ACs).
 
 Feature: Delete program with confirmation
 

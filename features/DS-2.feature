@@ -1,6 +1,7 @@
 # DS-2 — Edit existing program details
 # Jira: https://legionqaschool.atlassian.net/browse/DS-2
 # Story: As an admin user, I want to edit an existing program's details so that I can correct or update program information after creation.
+# Playwright: tests/ds2-edit-program.spec.ts (also covers DS-257 edit ACs).
 
 Feature: Edit existing program details
 

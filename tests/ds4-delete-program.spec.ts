@@ -5,6 +5,10 @@ import { ProgramsPage } from '../pages/ProgramsPage';
 import { openPrograms } from './helpers/auth';
 import { createTrackedProgram, nameOfLength, uniqueName } from './helpers/programs';
 
+/**
+ * Delete-program coverage for DS-4 and DS-259 (same ACs; DS-259 was a duplicate suite).
+ * Plans: `features/DS-4.feature`, `features/DS-259.feature`.
+ */
 const ASSUMED_PROGRAM_NAME_LENGTH = 255;
 
 function expectedDeleteConfirm(name: string): string {

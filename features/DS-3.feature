@@ -1,6 +1,7 @@
 # DS-3 — Program name validation and duplicate prevention
 # Jira: https://legionqaschool.atlassian.net/browse/DS-3
 # Story: As an admin user, I want the system to prevent invalid or duplicate program names so that data integrity is maintained.
+# Playwright: tests/ds3-program-name-validation.spec.ts (also covers DS-258 validation ACs).
 
 Feature: Program name validation and duplicate prevention
 

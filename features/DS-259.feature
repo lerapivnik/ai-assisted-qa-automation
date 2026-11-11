@@ -3,6 +3,7 @@
 # Story: As an admin user, I want to delete a program I no longer need, with a confirmation step to prevent accidental deletion.
 # Live crawl: Delete uses a native confirm dialog, not an in-page dialog.
 # Message pattern: Delete program "<name>"? All its semesters and courses will be removed. This cannot be undone.
+# Playwright: covered by tests/ds4-delete-program.spec.ts (shared with DS-4; duplicate ds259 spec removed).
 
 Feature: Delete program with confirmation
 

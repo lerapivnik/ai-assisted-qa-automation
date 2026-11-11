@@ -6,6 +6,10 @@ import { ProgramsPage } from '../pages/ProgramsPage';
 import { newAuthenticatedContext, openPrograms } from './helpers/auth';
 import { createTrackedProgram, nameOfLength, uniqueName } from './helpers/programs';
 
+/**
+ * Edit-program coverage for DS-2 and DS-257 (same ACs; DS-257 was a duplicate suite).
+ * Plans: `features/DS-2.feature`, `features/DS-257.feature`.
+ */
 const ASSUMED_PROGRAM_NAME_LENGTH = 255;
 
 async function openEditForm(programsPage: ProgramsPage, programName: string): Promise<void> {
