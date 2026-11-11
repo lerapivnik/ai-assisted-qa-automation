@@ -54,7 +54,7 @@ async function deleteProgram(api: APIRequestContext, id: string) {
   return api.delete(`/api/programs/${id}`);
 }
 
-test('manually purge programs from GET /api/programs', async ({ page }) => {
+test('manually purge programs from GET /api/programs', { tag: '@api' }, async ({ page }) => {
   test.setTimeout(60 * 60 * 1000);
   const limit = purgeLimit();
 

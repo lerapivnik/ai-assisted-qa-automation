@@ -18,7 +18,7 @@ test.describe('Create new academic program', () => {
       await openPrograms(page);
     });
 
-    test('Navigate to program creation form', async ({ page }) => {
+    test('Navigate to program creation form', { tag: '@smoke' }, async ({ page }) => {
       const programsPage = new ProgramsPage(page);
       const modal = programsPage.newProgramModal;
 
@@ -28,7 +28,7 @@ test.describe('Create new academic program', () => {
       await expect(modal.description).toBeVisible();
     });
 
-    test('Successfully create a program', async ({ page, trackProgram }) => {
+    test('Successfully create a program', { tag: '@smoke' }, async ({ page, trackProgram }) => {
       const programsPage = new ProgramsPage(page);
       const modal = programsPage.newProgramModal;
       const programName = uniqueName('Web Development 2026');
@@ -43,7 +43,7 @@ test.describe('Create new academic program', () => {
       });
     });
 
-    test('Validation prevents empty program name', async ({ page }) => {
+    test('Validation prevents empty program name', { tag: '@sanity' }, async ({ page }) => {
       const programsPage = new ProgramsPage(page);
       const modal = programsPage.newProgramModal;
 
@@ -53,7 +53,7 @@ test.describe('Create new academic program', () => {
       await expect(modal.createButton).toBeDisabled();
     });
 
-    test('Create stays disabled when Description is filled and Program Name is empty', async ({
+    test('Create stays disabled when Description is filled and Program Name is empty', { tag: '@sanity' }, async ({
       page,
     }) => {
       const programsPage = new ProgramsPage(page);
@@ -66,7 +66,7 @@ test.describe('Create new academic program', () => {
       await expect(modal.createButton).toBeDisabled();
     });
 
-    test('Cancel closes the form without adding the program', async ({ page }) => {
+    test('Cancel closes the form without adding the program', { tag: '@sanity' }, async ({ page }) => {
       const programsPage = new ProgramsPage(page);
       const modal = programsPage.newProgramModal;
       const programName = uniqueName('Web Development 2026');
@@ -79,7 +79,7 @@ test.describe('Create new academic program', () => {
       await expect(programsPage.programEditButton(programName)).toHaveCount(0);
     });
 
-    test('Create program when Description is left empty', async ({
+    test('Create program when Description is left empty', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {

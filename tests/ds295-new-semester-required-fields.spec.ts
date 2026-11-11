@@ -29,7 +29,7 @@ test.describe('Validate New Semester required fields', () => {
   test.describe.configure({ timeout: 120_000 });
 
   test.describe('authenticated admin', () => {
-    test('Create Semester enables when name and both dates are filled', async ({
+    test('Create Semester enables when name and both dates are filled', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -42,7 +42,7 @@ test.describe('Validate New Semester required fields', () => {
       await expect(modal.dialog).toBeVisible();
     });
 
-    test('Create Semester is disabled when name and dates are empty', async ({
+    test('Create Semester is disabled when name and dates are empty', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -56,7 +56,7 @@ test.describe('Validate New Semester required fields', () => {
       await expect(modal.dialog).toBeVisible();
     });
 
-    test('Create Semester stays disabled when only Semester Name is entered', async ({
+    test('Create Semester stays disabled when only Semester Name is entered', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -71,7 +71,7 @@ test.describe('Validate New Semester required fields', () => {
       await expect(modal.dialog).toBeVisible();
     });
 
-    test('Create Semester stays disabled when End Date is still empty', async ({
+    test('Create Semester stays disabled when End Date is still empty', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {

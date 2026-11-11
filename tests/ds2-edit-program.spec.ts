@@ -31,7 +31,7 @@ test.describe('Edit existing program details', () => {
       await openPrograms(page);
     });
 
-    test('TC-001: edit form displays pre-populated program data', async ({
+    test('TC-001: edit form displays pre-populated program data', { tag: '@smoke' }, async ({
       page,
       trackProgram,
     }) => {
@@ -56,7 +56,7 @@ test.describe('Edit existing program details', () => {
       await expect(modal.saveButton).toBeVisible();
     });
 
-    test('TC-002: program name update is reflected immediately in the list', async ({
+    test('TC-002: program name update is reflected immediately in the list', { tag: '@smoke' }, async ({
       page,
       trackProgram,
     }) => {
@@ -75,7 +75,7 @@ test.describe('Edit existing program details', () => {
       await expect(programsPage.alerts).toHaveCount(0);
     });
 
-    test('TC-003: unchanged fields are preserved when only Description is edited', async ({
+    test('TC-003: unchanged fields are preserved when only Description is edited', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -96,7 +96,7 @@ test.describe('Edit existing program details', () => {
       await expect(modal.description).toHaveValue(updatedDescription);
     });
 
-    test('TC-004: description can be cleared while Name remains unchanged', async ({
+    test('TC-004: description can be cleared while Name remains unchanged', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -116,7 +116,7 @@ test.describe('Edit existing program details', () => {
       await expect(modal.description).toHaveValue('');
     });
 
-    test('TC-005: Save is disabled when Program Name is cleared', async ({
+    test('TC-005: Save is disabled when Program Name is cleared', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -131,7 +131,7 @@ test.describe('Edit existing program details', () => {
       await expect(modal.saveButton).toBeDisabled();
     });
 
-    test('TC-006: Cancel discards unsaved edits and restores saved values on reopen', async ({
+    test('TC-006: Cancel discards unsaved edits and restores saved values on reopen', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -174,7 +174,7 @@ test.describe('Edit existing program details', () => {
       await expect(programsPage.programRow(existingName)).toHaveCount(2);
     });
 
-    test('TC-009: program name with special characters is accepted on edit', async ({
+    test('TC-009: program name with special characters is accepted on edit', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -191,7 +191,7 @@ test.describe('Edit existing program details', () => {
       await expectProgramSaved(programsPage, updatedName);
     });
 
-    test('TC-010: program name at 255 characters is accepted on edit', async ({
+    test('TC-010: program name at 255 characters is accepted on edit', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -208,7 +208,7 @@ test.describe('Edit existing program details', () => {
       await expectProgramSaved(programsPage, updatedName);
     });
 
-    test('TC-011: program name with only whitespace keeps Save disabled', async ({
+    test('TC-011: program name with only whitespace keeps Save disabled', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -223,7 +223,7 @@ test.describe('Edit existing program details', () => {
       await expect(modal.saveButton).toBeDisabled();
     });
 
-    test('TC-013: leading and trailing whitespace in Program Name is trimmed on save', async ({
+    test('TC-013: leading and trailing whitespace in Program Name is trimmed on save', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -242,7 +242,7 @@ test.describe('Edit existing program details', () => {
       await expect(programsPage.programEditButton(programName)).toBeVisible();
     });
 
-    test('TC-014: optional AI fields accept input and save without blocking edit', async ({
+    test('TC-014: optional AI fields accept input and save without blocking edit', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -260,7 +260,7 @@ test.describe('Edit existing program details', () => {
       await expectProgramSaved(programsPage, programName);
     });
 
-    test('TC-015: closing the dialog with X discards unsaved edits like Cancel', async ({
+    test('TC-015: closing the dialog with X discards unsaved edits like Cancel', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -282,7 +282,7 @@ test.describe('Edit existing program details', () => {
       await expect(modal.programName).toHaveValue(programName);
     });
 
-    test('TC-016: program name longer than 255 characters is accepted on edit', async ({
+    test('TC-016: program name longer than 255 characters is accepted on edit', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {

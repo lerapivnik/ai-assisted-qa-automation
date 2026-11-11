@@ -67,7 +67,7 @@ test.describe('Create new academic program', () => {
       await openPrograms(page);
     });
 
-    test('TC-001: program creation form displays required fields when opened from Programs page', async ({
+    test('TC-001: program creation form displays required fields when opened from Programs page', { tag: '@smoke' }, async ({
       page,
     }) => {
       const programsPage = new ProgramsPage(page);
@@ -93,7 +93,7 @@ test.describe('Create new academic program', () => {
       await expect(modal.createButton).toBeDisabled();
     });
 
-    test('TC-002: new program is created and appears in the program list', async ({
+    test('TC-002: new program is created and appears in the program list', { tag: '@smoke' }, async ({
       page,
       trackProgram,
     }) => {
@@ -113,7 +113,7 @@ test.describe('Create new academic program', () => {
       await expect(programsPage.alerts).toHaveCount(0);
     });
 
-    test('TC-003: program is created with only Program Name filled', async ({
+    test('TC-003: program is created with only Program Name filled', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -129,7 +129,7 @@ test.describe('Create new academic program', () => {
       await expectProgramCreated(programsPage, programName);
     });
 
-    test('TC-004: Create button remains disabled when Program Name is empty', async ({
+    test('TC-004: Create button remains disabled when Program Name is empty', { tag: '@sanity' }, async ({
       page,
     }) => {
       const programsPage = new ProgramsPage(page);
@@ -140,7 +140,7 @@ test.describe('Create new academic program', () => {
       await expect(modal.createButton).toBeDisabled();
     });
 
-    test('TC-005: program is not created when form is submitted without a name', async ({
+    test('TC-005: program is not created when form is submitted without a name', { tag: '@sanity' }, async ({
       page,
     }) => {
       const programsPage = new ProgramsPage(page);
@@ -155,7 +155,7 @@ test.describe('Create new academic program', () => {
       await expect(programsPage.programEditButton(description)).toHaveCount(0);
     });
 
-    test('TC-007: program name at 255 characters is accepted', async ({
+    test('TC-007: program name at 255 characters is accepted', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -172,7 +172,7 @@ test.describe('Create new academic program', () => {
       await expectProgramCreated(programsPage, programName);
     });
 
-    test('TC-008: program name longer than 255 characters is accepted', async ({
+    test('TC-008: program name longer than 255 characters is accepted', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -190,7 +190,7 @@ test.describe('Create new academic program', () => {
       await expect(modal.alerts).toHaveCount(0);
     });
 
-    test('TC-009: program name with special characters is accepted', async ({
+    test('TC-009: program name with special characters is accepted', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -206,7 +206,7 @@ test.describe('Create new academic program', () => {
       await expectProgramCreated(programsPage, programName);
     });
 
-    test('TC-010: program name with only whitespace is treated as empty', async ({
+    test('TC-010: program name with only whitespace is treated as empty', { tag: '@sanity' }, async ({
       page,
     }) => {
       const programsPage = new ProgramsPage(page);
@@ -218,7 +218,7 @@ test.describe('Create new academic program', () => {
       await expect(modal.dialog).toBeVisible();
     });
 
-    test('TC-011: closing the modal with Cancel does not add the program and keeps typed values', async ({
+    test('TC-011: closing the modal with Cancel does not add the program and keeps typed values', { tag: '@sanity' }, async ({
       page,
     }) => {
       const programsPage = new ProgramsPage(page);
@@ -238,7 +238,7 @@ test.describe('Create new academic program', () => {
       await expect(modal.description).toHaveValue(description);
     });
 
-    test('TC-012: program is created when optional AI generation fields are filled', async ({
+    test('TC-012: program is created when optional AI generation fields are filled', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -263,7 +263,7 @@ test.describe('Create new academic program', () => {
       ).toBeVisible();
     });
 
-    test('TC-013: leading and trailing whitespace in Program Name is trimmed before save', async ({
+    test('TC-013: leading and trailing whitespace in Program Name is trimmed before save', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -281,7 +281,7 @@ test.describe('Create new academic program', () => {
       await expect(programsPage.programNameInList(programName)).toHaveText(programName);
     });
 
-    test('TC-015: duplicate program name is accepted on create', async ({
+    test('TC-015: duplicate program name is accepted on create', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -303,7 +303,7 @@ test.describe('Create new academic program', () => {
       await expect(programsPage.programRow(programName)).toHaveCount(2);
     });
 
-    test('TC-016: rapid double-click on Create produces two program records', async ({
+    test('TC-016: rapid double-click on Create produces two program records', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -318,7 +318,7 @@ test.describe('Create new academic program', () => {
       await expect(programsPage.programRow(programName)).toHaveCount(2);
     });
 
-    test('TC-017: program creation form is empty after a successful create', async ({
+    test('TC-017: program creation form is empty after a successful create', { tag: '@e2e' }, async ({
       page,
       trackProgram,
     }) => {
@@ -365,7 +365,7 @@ test.describe('Create new academic program', () => {
       await expectProgramCreated(programsPage, programName);
     });
 
-    test('TC-019: closing the dialog with X does not add the program and keeps typed values', async ({
+    test('TC-019: closing the dialog with X does not add the program and keeps typed values', { tag: '@regression' }, async ({
       page,
     }) => {
       const programsPage = new ProgramsPage(page);

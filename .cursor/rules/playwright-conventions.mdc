@@ -1,10 +1,55 @@
 ---
-description: how this project writes Playwright tests — runner stability, auth, POM, locators, frozen clocks, data, cleanup, programs API edge cases, programs-page accessibility, and hard-stop refusals
-globs: tests/**,pages/**,playwright.config.ts
+description: how this project writes Playwright tests — tagging, runner stability, auth, POM, locators, frozen clocks, data, cleanup, programs API edge cases, programs-page accessibility, and hard-stop refusals
+globs: tests/**,pages/**,playwright.config.ts,test-data/**
 alwaysApply: false
 ---
 
 # Playwright conventions
+
+## 0. Tagging
+
+Tag every `test(...)` with **exactly one** of: `@smoke`, `@sanity`, `@regression`, `@api`, `@e2e`, `@destructive`. Never put a tag on `test.describe`. Never stack tags.
+
+| Tag | Use when |
+| --- | --- |
+| `@smoke` | Critical path — must pass before deeper suites |
+| `@sanity` | Broader confidence after smoke; still high-signal |
+| `@regression` | Full functional coverage beyond smoke/sanity |
+| `@api` | Direct API checks via Playwright `request` |
+| `@e2e` | Multi-step UI journeys across pages/flows |
+| `@destructive` | Mutates **shared/global** state (locale, roles, flags, settings) |
+
+`@destructive` is **only** for shared/global mutations and must run serially (`npm run test:destructive` → `--workers=1`). A test that creates and cleans up only its own records keeps an importance tag (`@smoke` / `@sanity` / `@regression` / `@e2e` / `@api`) — do **not** retag it `@destructive`.
+
+Any test that mutates shared/global state **must** restore it in `afterEach` or `afterAll` (revert locale, role, flag, or setting). Skipping the revert hook is a refusal.
+
+✅ Good:
+
+```typescript
+test('Programs page has no axe violations', { tag: '@regression' }, async ({ page }) => {
+  // ...
+});
+
+test('admin can switch tenant locale', { tag: '@destructive' }, async ({ page }) => {
+  // mutate shared locale, then assert
+});
+
+test.afterEach(async ({ page }) => {
+  // revert shared locale to the suite default
+});
+```
+
+❌ Bad:
+
+```typescript
+test.describe('Programs', { tag: '@regression' }, () => { /* ... */ });
+test('create program', { tag: ['@smoke', '@e2e'] }, async ({ page }) => { /* ... */ });
+test('toggle feature flag', { tag: '@regression' }, async ({ page }) => {
+  // mutates a shared flag with no afterEach/afterAll revert
+});
+```
+
+Run by tag: `npm run test:smoke` | `test:sanity` | `test:regression` | `test:api` | `test:e2e` | `test:destructive`.
 
 ## Refusals (hard stops)
 
@@ -16,6 +61,8 @@ If a request, a red run, or a suggested patch asks for any item below, refuse. S
 - **Use `waitForTimeout`.** A wait is a web-first `expect` or `waitForResponse` for a known method and path.
 - **Hardcode a credential.** Tokens and passwords come from `process.env`. A bearer token, a password, or `.env` is never written into a spec or committed.
 - **Use the `any` type.** Type the locator, the response, and the fixture. `any` is a refusal.
+- **Skip a revert on a state-mutating test.** Shared locale, role, flag, or setting changes need `afterEach` / `afterAll` restore.
+- **Tag a self-cleaning data test `@destructive`.** Own-record create/delete keeps `@smoke` / `@sanity` / `@regression` / `@e2e` / `@api`.
 
 ## 1. Locators
 
@@ -127,19 +174,67 @@ Why: A UI login before every feature test turns a slow Sign In into a product fa
 
 ## 5. Test data
 
-Tests that create a program import `test` from `fixtures/cleanup.fixture.ts`, call `trackProgram(uuid)` as soon as the id is known, and name records with `uniqueName`; the fixture deletes with `DELETE /api/programs/<uuid>` using `process.env.DIDAXIS_API_TOKEN`.
+| Kind | Where | Rule |
+| --- | --- | --- |
+| Happy-path payloads | `test-data/factories/` | Faker factories; each call yields unique fields for parallel runs |
+| Curated invalid / edge sets | static `.ts` under `test-data/invalid/` | Fixed literals for validation cases — do not Faker-randomize them |
+| Secrets and base URLs | `process.env` | `DIDAXIS_URL`, `DIDAXIS_EMAIL`, `DIDAXIS_PASSWORD`, `DIDAXIS_API_TOKEN` — never hardcode |
+| Repeated paths and messages | enums / const maps | Centralize UI copy, routes, and API path fragments; no scattered magic strings |
 
-✅ Good — `tests/helpers/programs.ts`:
+✅ Good — factory (`test-data/factories/program.ts`):
 
 ```typescript
-export function uniqueName(base: string): string {
-  return `${base} ${Date.now()}`;
+import { faker } from '@faker-js/faker';
+
+export type ProgramInput = {
+  name: string;
+  description: string;
+};
+
+/** Happy-path program payload. Each call yields a unique name for parallel runs. */
+export function buildProgram(
+  overrides: Partial<ProgramInput> = {},
+): ProgramInput {
+  return {
+    name: `${faker.company.buzzNoun()} Program ${faker.string.alphanumeric(6)}`,
+    description: faker.lorem.sentence(),
+    ...overrides,
+  };
+}
+```
+
+```typescript
+import { buildProgram } from '../test-data/factories/program';
+
+const program = buildProgram();
+await programsPage.createProgram(program.name, program.description);
+```
+
+✅ Good — curated invalid set (`test-data/invalid/program-names.ts`):
+
+```typescript
+export const INVALID_PROGRAM_NAMES = {
+  empty: '',
+  whitespaceOnly: '   ',
+  overMaxLength: 'A'.repeat(256),
+  xssPayload: "<script>alert('xss')</script>",
+} as const;
+```
+
+✅ Good — enum / const map for repeated strings:
+
+```typescript
+export enum ProgramsPath {
+  List = '/programs',
+  Api = '/api/programs',
 }
 
-const createResponse = programsPage.page.waitForResponse(isProgramCreateResponse);
-await programsPage.createProgram(name, description);
-await trackCreateFromResponse(await createResponse, trackProgram);
+export const ProgramsCopy = {
+  NewProgram: '+ New Program',
+} as const;
 ```
+
+Tests that create a program import `test` from `fixtures/cleanup.fixture.ts`, call `trackProgram(uuid)` as soon as the id is known, and prefer `buildProgram()` (or `uniqueName` where a fixed base is required); the fixture deletes with `DELETE /api/programs/<uuid>` using `process.env.DIDAXIS_API_TOKEN`.
 
 ❌ Bad:
 
@@ -150,9 +245,11 @@ test.afterAll(async () => {
     headers: { Authorization: 'Bearer eyJhbGciOi...' },
   });
 });
+
+const name = 'Web Development 2026'; // shared-tenant collision under parallel workers
 ```
 
-Why: An `afterAll` with a hardcoded token or a foreign id either leaves rows on the shared tenant or deletes a program the test did not create.
+Why: An `afterAll` with a hardcoded token or a foreign id either leaves rows on the shared tenant or deletes a program the test did not create. A fixed happy-path name collides across workers; factories (or `uniqueName`) keep rows distinct.
 
 Do not `trackProgram` an id from a `page.route` fulfill. A mocked create did not persist a row. Never commit `.env`.
 
@@ -286,7 +383,7 @@ Why: A one-shot `isVisible()` or a truthy locator reads the DOM once before the 
 
 Keep the runner contract, freeze any relative timestamp in the spec before navigation, and fix a flake by changing locators and waits only.
 
-`playwright.config.ts` already sets `fullyParallel: true`, `retries: process.env.CI ? 2 : 0`, and `trace: 'on-first-retry'`. Do not raise `retries` above 2. Do not set `workers`, including `workers: 1`. `use.baseURL` stays `process.env.DIDAXIS_URL`. `use.locale` and `use.timezoneId` are not named in this repo; ask the user before writing either value.
+`playwright.config.ts` already sets `fullyParallel: true`, `retries: process.env.CI ? 2 : 0`, and `trace: 'on-first-retry'`. Do not raise `retries` above 2. Do not set a `workers` key in config. The only allowed serial run is `npm run test:destructive` (`--workers=1` on the CLI for `@destructive` only). `use.baseURL` stays `process.env.DIDAXIS_URL`. `use.locale` and `use.timezoneId` are not named in this repo; ask the user before writing either value.
 
 No spec installs a frozen clock yet. Advise this when the assertion is a relative label such as `5 minutes ago`:
 
@@ -320,9 +417,13 @@ Why: Extra retries and a single worker hide a race, and a relative label follows
 | Actions in `pages/`; `expect` in the spec | Inline locators in a spec, or `expect` inside a page object |
 | `storageState` from `auth.setup.ts` for feature tests | UI login in every `beforeEach` |
 | `test.use({ storageState: { cookies: [], origins: [] } })` for login-page tests | Reusing the saved session to test Sign In |
-| `trackProgram(uuid)` from `fixtures/cleanup.fixture.ts` and `uniqueName` | `afterAll` cleanup, a hardcoded token, or deleting a row the test did not create |
+| Exactly one of `@smoke` / `@sanity` / `@regression` / `@api` / `@e2e` / `@destructive` on `test(...)` | Tags on `describe`, stacked tags, or `@destructive` for own-data cleanup |
+| `afterEach` / `afterAll` revert when mutating shared locale, role, flag, or setting | Leaving shared state dirty after a `@destructive` test |
+| `buildProgram()` / factories under `test-data/factories/`; invalid sets under `test-data/invalid/` | Hand-typed happy-path literals or Faker for curated invalid cases |
+| Secrets/URLs from `process.env`; repeated paths/messages from enums | Hardcoded tokens, URLs, or scattered magic strings |
+| `trackProgram(uuid)` from `fixtures/cleanup.fixture.ts` | Manual `afterAll` cleanup, a hardcoded token, or deleting a row the test did not create |
 | `request.get` / `request.post` with status and body asserts for API checks | `expect(response.ok()).toBeTruthy()` with no bearer token |
 | `page.route` matched by method and path, copy read from the app | Mocking the endpoint the test verifies, fulfilling `DELETE`, or inventing error text |
 | `expect(results.violations).toEqual([])` and a keyboard path | `.disableRules()` or a CI path that swallows violations |
 | `page.clock.install({ time })` before navigation for relative timestamps | Asserting `minutes ago` against the wall clock |
-| `retries` of `process.env.CI ? 2 : 0`, no `workers` key | `retries` above 2 or `workers: 1` |
+| `retries` of `process.env.CI ? 2 : 0`; `--workers=1` only via `test:destructive` | `retries` above 2 or `workers: 1` in `playwright.config.ts` |

@@ -8,8 +8,14 @@
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
-    "purge": "node scripts/purge.js",
-    "eval:report": "node scripts/write-eval-report.mjs"
+    "test:smoke": "playwright test --grep @smoke",
+    "test:sanity": "playwright test --grep @sanity",
+    "test:regression": "playwright test --grep @regression",
+    "test:api": "playwright test --grep @api",
+    "test:e2e": "playwright test --grep @e2e",
+    "test:destructive": "playwright test --grep @destructive --workers=1",
+    "eval:report": "node scripts/write-eval-report.mjs",
+    "purge": "node scripts/purge.js"
   },
   "repository": {
     "type": "git",
@@ -23,6 +29,7 @@
   "homepage": "https://github.com/lerapivnik/ai-assisted-qa-automation#readme",
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
+    "@faker-js/faker": "^10.6.0",
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.4",
     "typescript": "^7.0.2"

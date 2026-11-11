@@ -25,7 +25,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await openPrograms(page);
     });
 
-    test('TC-001: program name with special characters is accepted and saved', async ({
+    test('TC-001: program name with special characters is accepted and saved', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -43,7 +43,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await expectProgramListed(programsPage, programName);
     });
 
-    test('TC-002: program name with accented characters is accepted', async ({
+    test('TC-002: program name with accented characters is accepted', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -61,7 +61,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await expectProgramListed(programsPage, programName);
     });
 
-    test('TC-003: whitespace-only program name is rejected and form is not submitted', async ({
+    test('TC-003: whitespace-only program name is rejected and form is not submitted', { tag: '@sanity' }, async ({
       page,
     }) => {
       const programsPage = new ProgramsPage(page);
@@ -74,7 +74,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await expect(modal.dialog).toBeVisible();
     });
 
-    test('TC-004: duplicate program name is accepted on create', async ({
+    test('TC-004: duplicate program name is accepted on create', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -92,7 +92,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await expect(programsPage.programRow(programName)).toHaveCount(2);
     });
 
-    test('TC-005: empty program name prevents form submission', async ({ page }) => {
+    test('TC-005: empty program name prevents form submission', { tag: '@sanity' }, async ({ page }) => {
       const programsPage = new ProgramsPage(page);
       const modal = programsPage.newProgramModal;
       await openCreateForm(programsPage);
@@ -103,7 +103,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await expect(modal.dialog).toBeVisible();
     });
 
-    test('TC-006: duplicate check is case-sensitive on create', async ({
+    test('TC-006: duplicate check is case-sensitive on create', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -122,7 +122,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await expect(programsPage.programRow(caseVariant)).toHaveCount(1);
     });
 
-    test('TC-007: leading and trailing whitespace is trimmed before save', async ({
+    test('TC-007: leading and trailing whitespace is trimmed before save', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -140,7 +140,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await expect(programsPage.programRow(programName)).toHaveCount(2);
     });
 
-    test('TC-008: program name at 255 characters is accepted', async ({
+    test('TC-008: program name at 255 characters is accepted', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -158,7 +158,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await expectProgramListed(programsPage, programName);
     });
 
-    test('TC-009: program name longer than 255 characters is accepted', async ({
+    test('TC-009: program name longer than 255 characters is accepted', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -177,7 +177,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await expect(modal.alerts).toHaveCount(0);
     });
 
-    test('TC-010: program name with HTML/script tags is stored as plain text', async ({
+    test('TC-010: program name with HTML/script tags is stored as plain text', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -202,7 +202,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await expectProgramListed(programsPage, programName);
     });
 
-    test('TC-011: program name with only special characters is accepted', async ({
+    test('TC-011: program name with only special characters is accepted', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -220,7 +220,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await expectProgramListed(programsPage, programName);
     });
 
-    test('TC-012: duplicate prevention does not block edit rename to existing name', async ({
+    test('TC-012: duplicate prevention does not block edit rename to existing name', { tag: '@e2e' }, async ({
       page,
       trackProgram,
     }) => {
@@ -240,7 +240,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await expect(programsPage.programRow(existingName)).toHaveCount(2);
     });
 
-    test('TC-013: rapid double-click on Create produces duplicate program records', async ({
+    test('TC-013: rapid double-click on Create produces duplicate program records', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -277,7 +277,7 @@ test.describe('Program name validation and duplicate prevention', () => {
       await expect(programsPage.programRow(programName)).toHaveCount(2);
     });
 
-    test('TC-014: tab and newline characters in Program Name are normalized on save', async ({
+    test('TC-014: tab and newline characters in Program Name are normalized on save', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {

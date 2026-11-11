@@ -1,5 +1,5 @@
 ---
-description: Always-on constitution for this Playwright project — MUST / SHOULD / WON'T plus a one-line skills and agents index.
+description: Always-on constitution for this Playwright project — MUST / SHOULD / WON'T, agent governance, plus a one-line skills and agents index.
 alwaysApply: true
 ---
 
@@ -38,6 +38,30 @@ Non-negotiables for every Playwright task in this repo. Detail lives in `playwri
 | Healing a real bug | Heal locator drift only after triage says test issue; product defects go to bug-reporter. |
 | Tags on `describe` | Tags belong on individual tests. |
 | `@destructive` for own data | Tests that only create/delete their own records keep an importance tag; `@destructive` is shared-state only and runs with `--workers=1`. |
+
+## Agent governance
+
+Behavioral governance only — **not** hook-enforced. Audit, then edit.
+
+**Audit-then-edit.** For every non-trivial task, emit a **Proposal** block **before** editing:
+
+```
+Proposal
+- Scope: …
+- Confidence: N/10
+- Rationale: …
+- Unknowns: …
+```
+
+**Confidence gate**
+
+| Confidence | Action |
+|------------|--------|
+| < 5 | Do not proceed. Ask for the missing input. |
+| 5–7 | Proceed only with explicit unknowns **and** human approval. |
+| ≥ 8 | Proceed. |
+
+**Never invent** a path, enum, env var, credential, or message — ask or explore instead.
 
 ## Skills & agents
 
