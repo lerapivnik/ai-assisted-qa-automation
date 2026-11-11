@@ -1,27 +1,27 @@
 # Suite reliability report
 
-Generated: **2026-11-11T02:25:10Z** (UTC). Window: last **10** parseable `e2e.yml` runs (requested 10).
+Generated: **2026-11-11T13:44:02Z** (UTC). Window: last **10** parseable `e2e.yml` runs (requested 10).
 
 Cursor has **no built-in telemetry** for these metrics. Numbers below come from CI logs, PR history, and (for ask-vs-guess) session review.
 
 ## Flake rate
 
-**1.2%** — 12 tests passed only on retry / 989 passed-or-flaky outcomes.
+**1.5%** — 10 tests passed only on retry / 688 passed-or-flaky outcomes.
 
 How measured: `gh run list --workflow=e2e.yml`, then `gh run view <id> --log`, counting Playwright’s `N flaky` (failed then passed on retry) against `flaky + passed` in each run’s summary.
 
 What it tells us: Retries (`retries: CI ? 2 : 0`) are absorbing intermittent failures; a non-zero rate means green CI still hides race conditions.
 
+- 2026-11-11 run [42950772576](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42950772576): **0** flaky / 43 passed
+- 2026-11-11 run [42950061954](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42950061954): **0** flaky / 24 passed
+- 2026-11-11 run [42949122785](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42949122785): **0** flaky / 36 passed
+- 2026-11-11 run [42946961750](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42946961750): **0** flaky / 14 passed
+- 2026-11-11 run [42946955356](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42946955356): **0** flaky / 36 passed
+- 2026-11-11 run [42946572767](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42946572767): **0** flaky / 108 passed
 - 2026-11-11 run [42941170370](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42941170370): **1** flaky / 107 passed — tests/ds256-create-program.spec.ts:56:9 › Create new academic program › authenticated admin › Create stays disabled when Description is filled and Program Name is empty
 - 2026-11-11 run [42939499619](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42939499619): **0** flaky / 108 passed
 - 2026-11-10 run [42742312543](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42742312543): **7** flaky / 100 passed — tests/ds259-delete-program.spec.ts:77:9 › DS-259 — Delete program with confirmation › authenticated admin › cancel program deletion; tests/ds295-new-semester-required-fields.spec.ts:59:9 › Validate New Semester required fields › authenticated admin › Create Semester stays disabled when only Semester Name is entered; tests/ds3-program-name-validation.spec.ts:27:9 › Program name validation and duplicate prevention › authenticated admin › TC-001: program name with special characters is accepted and saved…
 - 2026-11-10 run [42735087329](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42735087329): **2** flaky / 102 passed — tests/ds2-edit-program.spec.ts:245:9 › Edit existing program details › authenticated admin › TC-014: optional AI fields accept input and save without blocking edit; tests/ds5-program-list-display.spec.ts:225:9 › Program list filtering and display › authenticated admin › TC-011: program list updates immediately after editing a program
-- 2026-11-10 run [42733713172](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42733713172): **0** flaky / 104 passed
-- 2026-11-10 run [42733677356](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42733677356): **0** flaky / 98 passed
-- 2026-11-10 run [42733012448](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42733012448): **2** flaky / 90 passed — tests/ds1-create-program.spec.ts:209:9 › Create new academic program › authenticated admin › TC-010: program name with only whitespace is treated as empty; tests/ds1-create-program.spec.ts:368:9 › Create new academic program › authenticated admin › TC-019: closing the dialog with X does not add the program and keeps typed values
-- 2026-11-10 run [42732508293](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42732508293): **0** flaky / 92 passed
-- 2026-11-07 run [42409499687](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42409499687): **0** flaky / 88 passed
-- 2026-11-07 run [42323593626](https://github.com/lerapivnik/ai-assisted-qa-automation/actions/runs/42323593626): **0** flaky / 88 passed
 
 ## Heal success rate
 
@@ -47,9 +47,9 @@ What it tells us: Whether the generation loop ships reviewable, AC-faithful spec
 
 ## Ask-vs-guess
 
-**1 asked / 2 guessed (1:2)**
+**1 asked / 0 guessed (1:0)**
 
-How measured: Session review of agent transcripts / orchestration chat (Cursor exposes no ask/guess counters). Overrides via `.cursor/eval-ask-vs-guess.json` or `--asks` / `--guesses`. Source this run: `.cursor/eval-ask-vs-guess.json` — Rolling session review (orchestration/generation chats + this eval setup): 1 explicit ask (exploratory-charter skill location: project vs personal); 2 invented values (DS-296 field-preservation asserts later triaged as invented; smoke/sanity/regression tag map applied across the suite without confirming each classification). This eval-report session invented no product values (metrics measured from CI/PR/session evidence).
+How measured: Session review of agent transcripts / orchestration chat (Cursor exposes no ask/guess counters). Overrides via `.cursor/eval-ask-vs-guess.json` or `--asks` / `--guesses`. Source this run: `.cursor/eval-ask-vs-guess.json` — test-generation run 2026-11-11: 1 ask (working Atlassian auth or In Progress ticket keys — ATLASSIAN_API_TOKEN returns 401 for legion.jira@proton.me against legionqaschool.atlassian.net; ATLASSIAN_PASSWORD empty; Atlassian MCP needsAuth and interactive mcp_auth unavailable in this agent environment; anon JQL cannot see project DS). 0 invented ticket keys, ACs, or product copy.
 
 What it tells us: Whether the agent stops for missing values (locale, copy, credentials, AC gaps) or invents them into plans/specs.
 
