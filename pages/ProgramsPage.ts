@@ -1,11 +1,13 @@
 import { type Locator, type Page } from '@playwright/test';
 import { EditProgramModal } from './EditProgramModal';
 import { NewProgramModal } from './NewProgramModal';
+import { NewSemesterModal } from './NewSemesterModal';
 
 export class ProgramsPage {
   readonly page: Page;
   readonly heading: Locator;
   readonly newProgramButton: Locator;
+  readonly newSemesterButton: Locator;
   readonly table: Locator;
   readonly rows: Locator;
   readonly programColumnHeader: Locator;
@@ -20,11 +22,13 @@ export class ProgramsPage {
   readonly createFirstProgramButton: Locator;
   readonly newProgramModal: NewProgramModal;
   readonly editProgramModal: EditProgramModal;
+  readonly newSemesterModal: NewSemesterModal;
 
   constructor(page: Page) {
     this.page = page;
     this.heading = page.getByRole('heading', { name: 'Programs' });
     this.newProgramButton = page.getByRole('button', { name: '+ New Program' });
+    this.newSemesterButton = page.getByRole('button', { name: '+ Semester' });
     this.table = page.getByRole('table');
     this.rows = page.getByRole('row');
     this.programColumnHeader = page.getByRole('columnheader', { name: 'Program' });
@@ -43,6 +47,7 @@ export class ProgramsPage {
     });
     this.newProgramModal = new NewProgramModal(page);
     this.editProgramModal = new EditProgramModal(page);
+    this.newSemesterModal = new NewSemesterModal(page);
   }
 
   async goto(options?: { waitForList?: boolean }): Promise<void> {
@@ -79,6 +84,14 @@ export class ProgramsPage {
 
   async openCreateFirstProgramForm(): Promise<void> {
     await this.createFirstProgramButton.click();
+  }
+
+  async selectProgramRow(name: string): Promise<void> {
+    await this.programRow(name).click();
+  }
+
+  async openNewSemesterForm(): Promise<void> {
+    await this.newSemesterButton.click();
   }
 
   async openEditForm(name: string): Promise<void> {
