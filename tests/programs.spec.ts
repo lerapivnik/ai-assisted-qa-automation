@@ -10,7 +10,7 @@ import { expectProgramListed, uniqueName } from './helpers/programs';
 test.describe('Programs', () => {
   test.describe.configure({ timeout: 120_000 });
 
-  test('program creation form displays required fields when opened from Programs page', async ({
+  test('program creation form displays required fields when opened from Programs page', { tag: '@smoke' }, async ({
     page,
   }) => {
     const programsPage = new ProgramsPage(page);
@@ -30,7 +30,7 @@ test.describe('Programs', () => {
     await expect(modal.createButton).toBeDisabled();
   });
 
-  test('new program is created and appears in the program list', async ({
+  test('new program is created and appears in the program list', { tag: '@smoke' }, async ({
     page,
     trackProgram,
   }) => {
@@ -54,7 +54,7 @@ test.describe('Programs', () => {
     });
   });
 
-  test('program is created with only Program Name filled', async ({
+  test('program is created with only Program Name filled', { tag: '@sanity' }, async ({
     page,
     trackProgram,
   }) => {

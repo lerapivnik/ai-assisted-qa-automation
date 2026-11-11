@@ -1,0 +1,69 @@
+---
+description: Always-on constitution for this Playwright project — MUST / SHOULD / WON'T, agent governance, plus a one-line skills and agents index.
+alwaysApply: true
+---
+
+# Constitution
+
+Non-negotiables for every Playwright task in this repo. Detail lives in `playwright-conventions.mdc` and `qa-orchestration.mdc`.
+
+## MUST
+
+| Rule | Meaning |
+|------|---------|
+| Role-based locators | Prefer `getByRole` (then label / placeholder / text / test id). Locators live in `pages/`, never inline in specs. |
+| Web-first assertions | Assert with Playwright `expect` on locators/responses — no fixed sleeps. |
+| `storageState` auth | Authenticated projects reuse `playwright/.auth/user.json` via the `setup` project. |
+| Unique self-cleaning data | Every created record uses a unique name/id and cleans up after itself. |
+| One tag per test | Exactly one of `@smoke`, `@sanity`, `@regression`, `@api`, `@e2e`, `@destructive` on `test(...)` — never on `describe`. |
+| Revert shared mutations | Any test that changes locale, roles, flags, or settings restores them in `afterEach` / `afterAll`. |
+
+## SHOULD
+
+| Rule | Meaning |
+|------|---------|
+| Faker factories | Happy-path data via `test-data/factories/` (Faker); curated invalid sets in static `test-data/invalid/*.ts`. |
+| Enums for repeated strings | Centralize repeated paths/messages; secrets and URLs from `process.env` only. |
+| JSDoc on action methods | Document POM actions that navigate, submit, or mutate state. |
+
+## WON'T
+
+| Rule | Meaning |
+|------|---------|
+| XPath | No `//…` locators. |
+| `waitForTimeout` | No hard-coded sleeps. |
+| Hardcoded secrets | Credentials and tokens come from `process.env` only. |
+| `any` | Type locators, responses, and fixtures. |
+| Weakened assertions | Never drop, loosen, or reword an `expect` to go green. |
+| Healing a real bug | Heal locator drift only after triage says test issue; product defects go to bug-reporter. |
+| Tags on `describe` | Tags belong on individual tests. |
+| `@destructive` for own data | Tests that only create/delete their own records keep an importance tag; `@destructive` is shared-state only and runs with `--workers=1`. |
+
+## Agent governance
+
+Behavioral governance only — **not** hook-enforced. Audit, then edit.
+
+**Audit-then-edit.** For every non-trivial task, emit a **Proposal** block **before** editing:
+
+```
+Proposal
+- Scope: …
+- Confidence: N/10
+- Rationale: …
+- Unknowns: …
+```
+
+**Confidence gate**
+
+| Confidence | Action |
+|------------|--------|
+| < 5 | Do not proceed. Ask for the missing input. |
+| 5–7 | Proceed only with explicit unknowns **and** human approval. |
+| ≥ 8 | Proceed. |
+
+**Never invent** a path, enum, env var, credential, or message — ask or explore instead.
+
+## Skills & agents
+
+**Skills** (`.cursor/skills/`): `jira-ticket-to-gherkin` (ticket→plan) · `explore-and-generate` (coverage gaps) · `exploratory-charter` (feature+risk→charter) · `pom-conventions` (POM) · `a11y-checks` (axe + keyboard) · `api-cleanup` (teardown) · `ci-failure-triage` (red-run classify) · `self-heal` (locator drift) · `jira-bug-reporter` (file bug) · `eval-report` (reliability metrics).
+**Agents** (`.cursor/agents/`): `test-writer` (plan→spec) · `triage` (classify red) · `bug-reporter` (file + link Jira).

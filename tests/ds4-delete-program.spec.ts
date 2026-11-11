@@ -71,7 +71,7 @@ test.describe('Delete program with confirmation', () => {
       await openPrograms(page);
     });
 
-    test('TC-001: delete program with confirmation', async ({ page, trackProgram }) => {
+    test('TC-001: delete program with confirmation', { tag: '@smoke' }, async ({ page, trackProgram }) => {
       const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
       await createTrackedProgram(programsPage, trackProgram, programName);
@@ -80,7 +80,7 @@ test.describe('Delete program with confirmation', () => {
       await expectProgramRemoved(programsPage, programName);
     });
 
-    test('TC-002: cancel program deletion', async ({ page, trackProgram }) => {
+    test('TC-002: cancel program deletion', { tag: '@sanity' }, async ({ page, trackProgram }) => {
       const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
       await createTrackedProgram(programsPage, trackProgram, programName);
@@ -96,7 +96,7 @@ test.describe('Delete program with confirmation', () => {
       await expectProgramStillListed(programsPage, programName);
     });
 
-    test('TC-003: confirmation dialog names the program and warns cascade/undo', async ({
+    test('TC-003: confirmation dialog names the program and warns cascade/undo', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -119,7 +119,7 @@ test.describe('Delete program with confirmation', () => {
       await expectProgramStillListed(programsPage, programName);
     });
 
-    test('TC-004: dismissing confirmation leaves program in list', async ({
+    test('TC-004: dismissing confirmation leaves program in list', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -137,7 +137,7 @@ test.describe('Delete program with confirmation', () => {
       await expectProgramStillListed(programsPage, programName);
     });
 
-    test('TC-006: confirmed deletion removes Delete action for that name', async ({
+    test('TC-006: confirmed deletion removes Delete action for that name', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -153,7 +153,7 @@ test.describe('Delete program with confirmation', () => {
       await expect(programsPage.alerts).toHaveCount(0);
     });
 
-    test('TC-007: program with special characters can be deleted', async ({
+    test('TC-007: program with special characters can be deleted', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -165,7 +165,7 @@ test.describe('Delete program with confirmation', () => {
       await expectProgramRemoved(programsPage, programName);
     });
 
-    test('TC-008: deleted program stays gone after reload', async ({ page, trackProgram }) => {
+    test('TC-008: deleted program stays gone after reload', { tag: '@e2e' }, async ({ page, trackProgram }) => {
       const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
       await createTrackedProgram(programsPage, trackProgram, programName);
@@ -178,7 +178,7 @@ test.describe('Delete program with confirmation', () => {
       await expectProgramRemoved(programsPage, programName);
     });
 
-    test('TC-009: 255-character name appears in confirm message', async ({
+    test('TC-009: 255-character name appears in confirm message', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -199,7 +199,7 @@ test.describe('Delete program with confirmation', () => {
     });
   });
 
-  test('TC-005: unauthenticated user cannot delete a program', async ({ browser }) => {
+  test('TC-005: unauthenticated user cannot delete a program', { tag: '@e2e' }, async ({ browser }) => {
     const context = await browser.newContext({
       storageState: { cookies: [], origins: [] },
     });

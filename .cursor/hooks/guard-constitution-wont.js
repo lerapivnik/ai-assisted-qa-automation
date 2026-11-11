@@ -1,15 +1,47 @@
 #!/usr/bin/env node
 'use strict';
 
+/**
+ * afterFileEdit guard for constitution WON'T rules.
+ * hooks.json matcher is "Write" (tool type). Path scope (tests/**, pages/**)
+ * is enforced here from file_path on stdin.
+ */
+
 const fs = require('fs');
 const { spawnSync } = require('child_process');
 
 const EXPECT_TOKEN = 'expect(';
+const SCOPED_PATH = /(?:^|[/\\])(?:tests|pages)[/\\]/;
 
-// hooks.json matcher is `tests/**`. Current Cursor compares an afterFileEdit
-// matcher to the tool name "Write", so the same scope is enforced here from
-// the edited path carried on stdin.
-const TESTS_PATH = /(?:^|[/\\])tests[/\\]/;
+const INTRODUCED_CHECKS = [
+  {
+    id: 'waitForTimeout',
+    reason: 'page.waitForTimeout (hard-coded sleep)',
+    pattern: /\.waitForTimeout\s*\(/,
+  },
+  {
+    id: 'xpath',
+    reason: 'XPath locator',
+    pattern: /\.locator\s*\(\s*(['"`])\s*(?:\/\/|xpath\s*=)/i,
+  },
+  {
+    id: 'any',
+    reason: 'the any type',
+    pattern: /(?:\bas\s+any\b|:\s*any\b|<any>)/,
+  },
+  {
+    id: 'hardcoded-credential',
+    reason: 'hardcoded credential',
+    pattern:
+      /(?:password|passwd|pwd|secret|token|api[_-]?key|bearer)\s*[:=]\s*(['"`])(?!process\.env)[^'"`\n]+\1/i,
+  },
+  {
+    id: 'describe-tag',
+    reason: 'tag on test.describe()',
+    pattern:
+      /test\.describe(?:\.\w+)?\s*\(\s*(?:`[^`]*`|'[^']*'|"[^"]*")\s*,\s*\{[\s\S]*?\btag\s*:/,
+  },
+];
 
 function finish(exitCode, message) {
   const payload =
@@ -23,6 +55,10 @@ function finish(exitCode, message) {
   fs.writeSync(1, JSON.stringify(payload) + '\n');
   if (message) fs.writeSync(2, message + '\n');
   process.exit(exitCode);
+}
+
+function toPosix(filePath) {
+  return String(filePath).replace(/\\/g, '/');
 }
 
 function countExpectCalls(source) {
@@ -96,12 +132,30 @@ function countCommentedExpectCalls(source) {
   return commented;
 }
 
+function countPattern(source, pattern) {
+  const flags = pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g';
+  const matches = source.match(new RegExp(pattern.source, flags));
+  return matches ? matches.length : 0;
+}
+
+function introducedViolations(before, after) {
+  const found = [];
+  for (const check of INTRODUCED_CHECKS) {
+    const beforeCount = countPattern(before, check.pattern);
+    const afterCount = countPattern(after, check.pattern);
+    if (afterCount > beforeCount) {
+      found.push(check.reason + ' (+' + (afterCount - beforeCount) + ')');
+    }
+  }
+  return found;
+}
+
 function weakeningReason(before, after) {
   const beforeCount = countExpectCalls(before);
   const afterCount = countExpectCalls(after);
   if (afterCount < beforeCount) {
     return (
-      'expect( count dropped from ' + beforeCount + ' to ' + afterCount
+      'removed/weakened expect( (count ' + beforeCount + ' -> ' + afterCount + ')'
     );
   }
 
@@ -109,19 +163,15 @@ function weakeningReason(before, after) {
   const afterCommented = countCommentedExpectCalls(after);
   if (afterCommented > beforeCommented) {
     return (
-      'expect( commented out (' +
+      'removed/weakened expect( (commented ' +
       beforeCommented +
-      ' commented -> ' +
+      ' -> ' +
       afterCommented +
       ')'
     );
   }
 
   return null;
-}
-
-function toPosix(filePath) {
-  return String(filePath).replace(/\\/g, '/');
 }
 
 function gitHeadSource(filePath) {
@@ -180,17 +230,17 @@ process.stdin.on('end', () => {
   try {
     input = raw.trim() ? JSON.parse(raw) : {};
   } catch {
-    finish(2, 'guard-test-assertions BLOCK: hook input was not valid JSON');
+    finish(2, 'guard-constitution-wont BLOCK: hook input was not valid JSON');
   }
 
   const filePath = input.file_path || input.filePath || input.path || '';
   if (!filePath) {
-    finish(2, 'guard-test-assertions BLOCK: stdin JSON had no file_path');
+    finish(2, 'guard-constitution-wont BLOCK: stdin JSON had no file_path');
   }
 
   const display = toPosix(filePath);
-  if (!TESTS_PATH.test(filePath)) {
-    finish(0, 'guard-test-assertions ALLOW ' + display + ': outside tests/**');
+  if (!SCOPED_PATH.test(filePath)) {
+    finish(0, 'guard-constitution-wont ALLOW ' + display + ': outside tests/** and pages/**');
   }
 
   const edits = Array.isArray(input.edits) ? input.edits : [];
@@ -206,9 +256,9 @@ process.stdin.on('end', () => {
     } catch (error) {
       finish(
         2,
-        'guard-test-assertions BLOCK ' +
+        'guard-constitution-wont BLOCK ' +
           display +
-          ': could not read the edited test (' +
+          ': could not read the edited file (' +
           error.message +
           ')'
       );
@@ -218,29 +268,35 @@ process.stdin.on('end', () => {
     if (before == null) {
       finish(
         0,
-        'guard-test-assertions ALLOW ' + display + ': no prior revision to compare'
+        'guard-constitution-wont ALLOW ' + display + ': no prior revision to compare'
       );
     }
   }
 
-  const reason = weakeningReason(before, after);
-  if (reason) {
-    finish(2, 'guard-test-assertions BLOCK ' + display + ': ' + reason + ' [' + via + ']');
+  const introduced = introducedViolations(before, after);
+  if (introduced.length > 0) {
+    finish(
+      2,
+      'guard-constitution-wont BLOCK ' +
+        display +
+        ': ' +
+        introduced.join('; ') +
+        ' [' +
+        via +
+        ']'
+    );
+  }
+
+  const weakened = weakeningReason(before, after);
+  if (weakened) {
+    finish(2, 'guard-constitution-wont BLOCK ' + display + ': ' + weakened + ' [' + via + ']');
   }
 
   finish(
     0,
-    'guard-test-assertions ALLOW ' +
+    'guard-constitution-wont ALLOW ' +
       display +
-      ': expect( ' +
-      countExpectCalls(before) +
-      ' -> ' +
-      countExpectCalls(after) +
-      ', commented ' +
-      countCommentedExpectCalls(before) +
-      ' -> ' +
-      countCommentedExpectCalls(after) +
-      ' [' +
+      ': no WON\'T violations [' +
       via +
       ']'
   );

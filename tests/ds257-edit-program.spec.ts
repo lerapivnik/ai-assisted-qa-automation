@@ -31,7 +31,7 @@ test.describe('Edit existing program details', () => {
       await openPrograms(page);
     });
 
-    test('Open program for editing', async ({ page, trackProgram }) => {
+    test('Open program for editing', { tag: '@smoke' }, async ({ page, trackProgram }) => {
       const programsPage = new ProgramsPage(page);
       const modal = programsPage.editProgramModal;
       const programName = uniqueName(NAME_BASE);
@@ -46,7 +46,7 @@ test.describe('Edit existing program details', () => {
       await expect(modal.description).toHaveValue(description);
     });
 
-    test('Successfully edit a program name', async ({ page, trackProgram }) => {
+    test('Successfully edit a program name', { tag: '@smoke' }, async ({ page, trackProgram }) => {
       const programsPage = new ProgramsPage(page);
       const modal = programsPage.editProgramModal;
       const programName = uniqueName(NAME_BASE);
@@ -63,7 +63,7 @@ test.describe('Edit existing program details', () => {
       });
     });
 
-    test('Edit preserves unchanged fields', async ({ page, trackProgram }) => {
+    test('Edit preserves unchanged fields', { tag: '@sanity' }, async ({ page, trackProgram }) => {
       const programsPage = new ProgramsPage(page);
       const modal = programsPage.editProgramModal;
       const programName = uniqueName(NAME_BASE);
@@ -81,7 +81,7 @@ test.describe('Edit existing program details', () => {
       ).toBeVisible();
     });
 
-    test('Cancel edit leaves the list name and description unchanged', async ({
+    test('Cancel edit leaves the list name and description unchanged', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -104,7 +104,7 @@ test.describe('Edit existing program details', () => {
       await expect(programsPage.programEditButton(unsavedName)).toHaveCount(0);
     });
 
-    test('Clearing Program Name does not save an empty name', async ({
+    test('Clearing Program Name does not save an empty name', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -120,7 +120,7 @@ test.describe('Edit existing program details', () => {
       await expect(modal.saveButton).toBeDisabled();
     });
 
-    test('Edit form shows the selected program Name and Description', async ({
+    test('Edit form shows the selected program Name and Description', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {

@@ -79,7 +79,7 @@ test.describe('Program list filtering and display', () => {
       await expect(programsPage.newProgramButton).toBeVisible({ timeout: 30_000 });
     });
 
-    test('TC-001: program list displays name and description for each existing program', async ({
+    test('TC-001: program list displays name and description for each existing program', { tag: '@smoke' }, async ({
       page,
       trackProgram,
     }) => {
@@ -98,15 +98,15 @@ test.describe('Program list filtering and display', () => {
       await expect(programsPage.programDescriptionInList(dataScience, dataDesc)).toBeVisible();
     });
 
-    test('TC-002: empty state message and create prompt are shown when no programs exist', async () => {
+    test('TC-002: empty state message and create prompt are shown when no programs exist', { tag: '@regression' }, async () => {
       test.skip(true, SHARED_ENV_HAS_PROGRAMS);
     });
 
-    test('TC-003: create-first-program prompt opens the New Program dialog', async () => {
+    test('TC-003: create-first-program prompt opens the New Program dialog', { tag: '@regression' }, async () => {
       test.skip(true, SHARED_ENV_HAS_PROGRAMS);
     });
 
-    test('TC-004: program with empty description displays only the name line in the list', async ({
+    test('TC-004: program with empty description displays only the name line in the list', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -120,7 +120,7 @@ test.describe('Program list filtering and display', () => {
       await expect(programsPage.programParagraphs(programName)).toHaveCount(1);
     });
 
-    test('TC-014: Programs page shows table layout and row management actions', async ({
+    test('TC-014: Programs page shows table layout and row management actions', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -139,7 +139,7 @@ test.describe('Program list filtering and display', () => {
       await expect(programsPage.programDeleteButton(programName)).toBeVisible();
     });
 
-    test('TC-006: program list does not show stale data after a program is deleted', async ({
+    test('TC-006: program list does not show stale data after a program is deleted', { tag: '@e2e' }, async ({
       page,
       trackProgram,
     }) => {
@@ -155,7 +155,7 @@ test.describe('Program list filtering and display', () => {
       await waitForProgramListed(programsPage, webDev);
     });
 
-    test('TC-007: program list does not show duplicate entries after creating a program once', async ({
+    test('TC-007: program list does not show duplicate entries after creating a program once', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -171,14 +171,14 @@ test.describe('Program list filtering and display', () => {
       await expect(programsPage.programRow(programName)).toHaveCount(1);
     });
 
-    test('TC-015: Programs page has no search or filter controls', async ({ page }) => {
+    test('TC-015: Programs page has no search or filter controls', { tag: '@regression' }, async ({ page }) => {
       const programsPage = new ProgramsPage(page);
       await expect(programsPage.searchPlaceholder).toHaveCount(0);
       await expect(programsPage.filterButton).toHaveCount(0);
       await expect(programsPage.searchTextbox).toHaveCount(0);
     });
 
-    test('TC-008: program list displays programs with special characters correctly', async ({
+    test('TC-008: program list displays programs with special characters correctly', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -191,7 +191,7 @@ test.describe('Program list filtering and display', () => {
       await expect(programsPage.programDescriptionInList(programName, description)).toBeVisible();
     });
 
-    test('TC-009: program list handles a large number of programs via scrollable table', async ({
+    test('TC-009: program list handles a large number of programs via scrollable table', { tag: '@regression' }, async ({
       page,
     }) => {
       const programsPage = new ProgramsPage(page);
@@ -205,7 +205,7 @@ test.describe('Program list filtering and display', () => {
       expect(await programsPage.rows.count()).toBeGreaterThanOrEqual(50);
     });
 
-    test('TC-010: program with long name and description appears in the list', async ({
+    test('TC-010: program with long name and description appears in the list', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {
@@ -222,7 +222,7 @@ test.describe('Program list filtering and display', () => {
       await expect(descLine).toHaveAttribute('data-line-clamp', 'true');
     });
 
-    test('TC-011: program list updates immediately after editing a program', async ({
+    test('TC-011: program list updates immediately after editing a program', { tag: '@e2e' }, async ({
       page,
       trackProgram,
     }) => {
@@ -247,11 +247,11 @@ test.describe('Program list filtering and display', () => {
       await expect(programsPage.programEditButton(updatedName)).toBeVisible();
     });
 
-    test('TC-012: empty state transitions to list view after creating the first program', async () => {
+    test('TC-012: empty state transitions to list view after creating the first program', { tag: '@e2e' }, async () => {
       test.skip(true, SHARED_ENV_HAS_PROGRAMS);
     });
 
-    test('TC-013: program list sort order is stable across refresh for a batch of programs', async ({
+    test('TC-013: program list sort order is stable across refresh for a batch of programs', { tag: '@regression' }, async ({
       page,
       trackProgram,
     }) => {

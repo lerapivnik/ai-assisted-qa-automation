@@ -65,7 +65,7 @@ test.describe('DS-259 — Delete program with confirmation', () => {
       await openPrograms(page);
     });
 
-    test('delete program with confirmation', async ({ page, trackProgram }) => {
+    test('delete program with confirmation', { tag: '@smoke' }, async ({ page, trackProgram }) => {
       const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
       await createTrackedProgram(programsPage, trackProgram, programName);
@@ -74,7 +74,7 @@ test.describe('DS-259 — Delete program with confirmation', () => {
       await expectProgramRemoved(programsPage, programName);
     });
 
-    test('cancel program deletion', async ({ page, trackProgram }) => {
+    test('cancel program deletion', { tag: '@sanity' }, async ({ page, trackProgram }) => {
       const programsPage = new ProgramsPage(page);
       const programName = uniqueName('Test Program');
       await createTrackedProgram(programsPage, trackProgram, programName);
@@ -90,7 +90,7 @@ test.describe('DS-259 — Delete program with confirmation', () => {
       await expectProgramStillListed(programsPage, programName);
     });
 
-    test('dismissing confirmation leaves program in list', async ({
+    test('dismissing confirmation leaves program in list', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {
@@ -109,7 +109,7 @@ test.describe('DS-259 — Delete program with confirmation', () => {
       await expectProgramStillListed(programsPage, programName);
     });
 
-    test('confirmation names the program and warns cascade/undo', async ({
+    test('confirmation names the program and warns cascade/undo', { tag: '@sanity' }, async ({
       page,
       trackProgram,
     }) => {

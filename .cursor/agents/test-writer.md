@@ -37,6 +37,7 @@ await expect(timestamp).toHaveText('5 minutes ago');
 ```
 
 `timestamp` is the existing page-object locator for that field. Add the locator on the page object if it is missing. Do not query it from the spec.
+- Tag every `test(...)` with exactly one of `@smoke`, `@sanity`, `@regression`, `@api`, `@e2e`, `@destructive` (never on `describe`). `@destructive` only for shared/global mutations (locale, roles, flags, settings) with an `afterEach`/`afterAll` revert; self-cleaning own-data tests keep an importance tag. Prefer `buildProgram()` from `test-data/factories/` for happy-path data and curated sets under `test-data/invalid/` for validation cases.
 - Programs page accessibility goes in `tests/programs.a11y.spec.ts` (follow `.cursor/skills/a11y-checks/SKILL.md`). One tag per test. Navigate through the existing POMs; no inline locators in the spec; role-based locators throughout.
   1. Axe: `new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()`, then `expect(results.violations).toEqual([])`. Scope with `.include()` / `.exclude()` only if a third-party widget is noisy, and comment why.
   2. Keyboard, which axe cannot do: tab to the primary control, `toBeFocused()`, press Enter, assert the dialog opens.

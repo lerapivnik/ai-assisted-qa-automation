@@ -87,3 +87,5 @@ A human approves any merge and any filed bug.
 ## Done
 
 The suite is green for the ticket, **or** a repair PR for drift is open and linked to the run (a human merges), **or** a bug is filed and linked.
+
+Then regenerate the reliability report: apply `.cursor/skills/eval-report/SKILL.md` (update `.cursor/eval-ask-vs-guess.json` for this session, run `npm run eval:report`). Required after every orchestrator/agent session and after `test-generation.yml` — even when no PR was opened.
