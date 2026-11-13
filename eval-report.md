@@ -1,6 +1,6 @@
 # Suite reliability report
 
-Generated: **2026-11-12T14:46:56Z** (UTC). Window: last **10** parseable `e2e.yml` runs (requested 10).
+Generated: **2026-11-13T14:03:48Z** (UTC). Window: last **10** parseable `e2e.yml` runs (requested 10).
 
 Cursor has **no built-in telemetry** for these metrics. Numbers below come from CI logs, PR history, and (for ask-vs-guess) session review.
 
@@ -49,7 +49,7 @@ What it tells us: Whether the generation loop ships reviewable, AC-faithful spec
 
 **1 asked / 0 guessed (1:0)**
 
-How measured: Session review of agent transcripts / orchestration chat (Cursor exposes no ask/guess counters). Overrides via `.cursor/eval-ask-vs-guess.json` or `--asks` / `--guesses`. Source this run: `.cursor/eval-ask-vs-guess.json` — test-generation run 2026-11-12: 1 ask (working Atlassian auth or In Progress ticket keys — ATLASSIAN_API_TOKEN returns 401 for legion.jira@proton.me against legionqaschool.atlassian.net; ATLASSIAN_PASSWORD empty; Atlassian MCP needsAuth and interactive mcp_auth unavailable in this agent environment). 0 invented ticket keys, ACs, or product copy.
+How measured: Session review of agent transcripts / orchestration chat (Cursor exposes no ask/guess counters). Overrides via `.cursor/eval-ask-vs-guess.json` or `--asks` / `--guesses`. Source this run: `.cursor/eval-ask-vs-guess.json` — test-generation 2026-11-13: 1 ask — working Atlassian auth or In Progress ticket keys (ATLASSIAN_API_TOKEN 401 for legion.jira@proton.me @ legionqaschool.atlassian.net; ATLASSIAN_PASSWORD empty; Atlassian MCP needsAuth and interactive mcp_auth unavailable). 0 invented ticket keys, ACs, or product copy.
 
 What it tells us: Whether the agent stops for missing values (locale, copy, credentials, AC gaps) or invents them into plans/specs.
 
