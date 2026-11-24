@@ -1,6 +1,6 @@
 # Suite reliability report
 
-Generated: **2026-11-23T17:36:15Z** (UTC). Window: last **10** parseable `e2e.yml` runs (requested 10).
+Generated: **2026-11-24T17:06:05Z** (UTC). Window: last **10** parseable `e2e.yml` runs (requested 10).
 
 Cursor has **no built-in telemetry** for these metrics. Numbers below come from CI logs, PR history, and (for ask-vs-guess) session review.
 
@@ -49,7 +49,7 @@ What it tells us: Whether the generation loop ships reviewable, AC-faithful spec
 
 **1 asked / 0 guessed (1:0)**
 
-How measured: Session review of agent transcripts / orchestration chat (Cursor exposes no ask/guess counters). Overrides via `.cursor/eval-ask-vs-guess.json` or `--asks` / `--guesses`. Source this run: `.cursor/eval-ask-vs-guess.json` — test-generation 2026-11-23: 1 ask — working Atlassian auth or explicit In Progress ticket keys (ATLASSIAN_API_TOKEN ATATT… → x-seraph-loginreason AUTHENTICATED_FAILED / myself 401 on legionqaschool.atlassian.net; ATLASSIAN_PASSWORD empty; ATLASSIAN_BASE_URL unset; Atlassian MCP needsAuth and interactive mcp_auth unavailable in this agent env). 0 invented ticket keys, ACs, or product copy.
+How measured: Session review of agent transcripts / orchestration chat (Cursor exposes no ask/guess counters). Overrides via `.cursor/eval-ask-vs-guess.json` or `--asks` / `--guesses`. Source this run: `.cursor/eval-ask-vs-guess.json` — test-generation 2026-11-24: 1 ask — working Atlassian auth or explicit In Progress ticket keys (ATLASSIAN_API_TOKEN ATATT… → x-seraph-loginreason AUTHENTICATED_FAILED / myself 401 on legionqaschool.atlassian.net; ATLASSIAN_PASSWORD empty; ATLASSIAN_BASE_URL unset; Atlassian MCP needsAuth and interactive mcp_auth unavailable in this agent env). 0 invented ticket keys, ACs, or product copy.
 
 What it tells us: Whether the agent stops for missing values (locale, copy, credentials, AC gaps) or invents them into plans/specs.
 
