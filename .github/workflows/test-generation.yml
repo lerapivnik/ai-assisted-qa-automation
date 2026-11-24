@@ -1,9 +1,7 @@
 name: Test generation
 
 on:
-  schedule:
-   // # 06:00 UTC, Monday–Friday
-   // - cron: '0 6 * * 1-5'
+  # Manual only — no weekday cron. Re-add schedule when you want unattended runs again.
   workflow_dispatch:
 
 permissions:
